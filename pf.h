@@ -234,6 +234,7 @@ public:
     int RANTERM();
     int verlet(double &enerkin, double &e_pot);
     int pbc_shift();
+    int output_conformation(int &nOutputGap, int &nOutputCount);
     int write_mol(int &nOutputCount);
     int write_target(int &nOutputCount);
     int write_histogram();

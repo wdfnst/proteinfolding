@@ -635,12 +635,9 @@ int pf::Simulation::read_initalconform(string filename) {
  * Start the simulation
  */
 int pf::Simulation::start_simulation() {
-    string msg     = "";
-    int nFoldTol   = 0;
-    int nunFoldTol = 0;
-    int aveNadim   = 0;
+    string msg = "";
 
-    //=======================Initial Work Start=====================/
+    //=======================Initial work start=====================/
     // !-------------read parameters-------------------
     // Parameter Reading and parsing are in the constructor of class Simulation
     
@@ -660,9 +657,13 @@ int pf::Simulation::start_simulation() {
     nativeinformation();
     intpar(enerkin);
 
+    // !  total number of folding/unfolding events
+    int nFoldTol   = 0;
+    int nunFoldTol = 0;
+    int aveNadim   = 0;
+
     read_initalconform(param.initialconform_filename);
     //=======================Initial Work End=======================/
-
 
     // TL: nOutputCount is used till end of main loop, what's it used for?
     int nOutputCount = 0;
@@ -677,7 +678,7 @@ int pf::Simulation::start_simulation() {
         // fortran code: read(20,*) xinit(i),yinit(i),zinit(i)
         read_initalconform(param.initialconform_filename);
     
-        // Copy from fortran code
+        // Copy from fortran code, TL: means?
         int nFoldSub = 0;
         int nunFoldSub = 0;
 
@@ -772,55 +773,9 @@ int pf::Simulation::start_simulation() {
                 }
                 // !-------------save data for purpose of restore end---------- 
                             
-                
                 // !--------------output conformation-------------
                 nOutputGap += 1;
-
-                if (param.nadim == 0 ) {
-                    msg = to_string(nOutputCount) + '\t' +
-                        to_string(param.nadim) + '\t' +
-                        to_string(param.gQ_f) + '\t' +
-                        to_string(param.gQ_b) + '\t' + to_string(param.R);
-                    log.info(output_filenames[27],
-                            "nOutputCount,  nadim,   gQ_f,     gQ_b,     R");
-                }
-
-                if (nOutputCount < param.nConformOutput 
-                        && param.nadim >= param.nOutput0 
-                        && nOutputGap >= param.ndOutput
-                        && param.gQ_f1 >= param.outQf1_i
-                        && param.gQ_f1 <= param.outQf1_f
-                        && param.gQ_f2 >= param.outQf2_i
-                        && param.gQ_f2 <= param.outQf2_f
-                        && param.gQ_b >= param.outQb_i
-                        && param.gQ_b <= param.outQb_f) {
-                    nOutputGap = 0;
-
-                    write_mol(nOutputCount);
-                    msg = log.format("%7d %13d %10.3f %10.3f \
-                            %10.3f\n", nOutputCount, param.nadim, param.gQ_f,
-                            param.gQ_b, param.R);
-                    log.info(output_filenames[27], msg);
-
-                    for (int j = 0; j < param.nparttol; j++) {
-                        msg = to_string(particle_list[j].x) + '\t' + 
-                            to_string(particle_list[j].y) + '\t' +
-                            to_string(particle_list[j].z);
-                        log.info(output_filenames[26], msg + '\n');
-                    }
-
-                    // fortran code: write(26,'('' '')')
-                    log.info(output_filenames[26], " ");
-                    // write(*,'(''n='',i3,'', nadim='',i8,'', gQ='',f7.3, '',
-                    // old gQ='', 1i3)')nOutputCount,nadim,gQ,natcont
-                    // TL: what's the mean of 1i3?
-                    // gQ and natcont don't define, so we define them as follos
-                    double gQ = 0.0;
-                    int natcont = 0;
-                    msg = log.format("n=%3d nadim=%4d gQ=%7.3f, old gQ=%3d\n",
-                            nOutputCount, param.nadim, gQ, natcont);
-                    cout << msg;
-                }
+                output_conformation(nOutputGap, nOutputCount);
                 // !--------------output conformation end---------
 
                 // To check whether end the loop
@@ -1155,6 +1110,49 @@ int pf::Simulation::pbc_shift() {
         }
     } 
     return 0;
+}
+
+int pf::Simulation::output_conformation(int &nOutputGap, int &nOutputCount) {
+    string msg = "";
+    if (param.nadim == 0 ) {
+        msg = to_string(nOutputCount) + '\t' + to_string(param.nadim) + '\t' +
+            to_string(param.gQ_f) + '\t' + to_string(param.gQ_b) + '\t' +
+            to_string(param.R);
+        log.info(output_filenames[27],
+                "nOutputCount,  nadim,   gQ_f,     gQ_b,     R");
+    }
+
+    if (nOutputCount < param.nConformOutput && param.nadim >= param.nOutput0 
+            && nOutputGap >= param.ndOutput && param.gQ_f1 >= param.outQf1_i
+            && param.gQ_f1 <= param.outQf1_f && param.gQ_f2 >= param.outQf2_i
+            && param.gQ_f2 <= param.outQf2_f && param.gQ_b >= param.outQb_i
+            && param.gQ_b <= param.outQb_f) {
+        nOutputGap = 0;
+
+        write_mol(nOutputCount);
+        msg = log.format("%7d %13d %10.3f %10.3f %10.3f\n", nOutputCount,
+                param.nadim, param.gQ_f, param.gQ_b, param.R);
+        log.info(output_filenames[27], msg);
+
+        for (int j = 0; j < param.nparttol; j++) {
+            msg = to_string(particle_list[j].x) + '\t' + 
+                to_string(particle_list[j].y) + '\t' +
+                to_string(particle_list[j].z);
+            log.info(output_filenames[26], msg + '\n');
+        }
+
+        // fortran code: write(26,'('' '')')
+        log.info(output_filenames[26], " ");
+        // write(*,'(''n='',i3,'', nadim='',i8,'', gQ='',f7.3, '',
+        // old gQ='', 1i3)')nOutputCount,nadim,gQ,natcont
+        // TL: what's the mean of 1i3?
+        // gQ and natcont don't define, so we define them as follos
+        double gQ = 0.0;
+        int natcont = 0;
+        msg = log.format("n=%3d nadim=%4d gQ=%7.3f, old gQ=%3d\n",
+                nOutputCount, param.nadim, gQ, natcont);
+        cout << msg;
+    }
 }
 
 int pf::Simulation::write_mol(int &nOutputCount) {
@@ -1521,7 +1519,8 @@ int pf::Simulation::nativeinformation() {
         xij = particle_list[i - 1].x - particle_list[j - 1].x;
         yij = particle_list[i - 1].y - particle_list[j - 1].y;
         zij = particle_list[i - 1].z - particle_list[j - 1].z;
-        param.runbond_nat[k] = sqrt(pow(xij, 2) + pow(yij, 2) + pow(zij, 2));
+        particle_list[k].runbond_nat = sqrt(pow(xij, 2) + pow(yij, 2) +
+                pow(zij, 2));
         // TL: no word to describe
         if (param.kunbond[k] == 1) {
             if (i <= param.npart1 && j <= param.npart1) {
@@ -1539,7 +1538,8 @@ int pf::Simulation::nativeinformation() {
         xij = particle_list[j].x - particle_list[i].x;
         yij = particle_list[j].y - particle_list[i].y;
         zij = particle_list[j].z - particle_list[i].z;
-        param.rbond_nat[i] = sqrt(pow(xij, 2) + pow(yij, 2) + pow(zij, 2));
+        particle_list[i].rbond_nat = sqrt(pow(xij, 2) + pow(yij, 2) +
+                pow(zij, 2));
     }
 
     double xkj, ykj, zkj, rij, rkj, costheta;
@@ -1565,7 +1565,7 @@ int pf::Simulation::nativeinformation() {
             costheta = costheta > 0 ? epstht : (-1 * epstht);
         }
 
-        param.theta_nat[i] = acos(costheta);
+        particle_list[i].theta_nat = acos(costheta);
     }
 
     double xkl, ykl, zkl, rkl;
@@ -1609,7 +1609,7 @@ int pf::Simulation::nativeinformation() {
         double phi = acos(phi);
         //fortran code: dihedral_nat(i)=sign(phi,xkj*xil+ykj*yil+zkj*zil)
         double temp = xkj * xil + ykj * yil + zkj * zil;
-        param.dihedral_nat[i] = temp > 0 ? phi : (-1.0 * phi);
+        particle_list[i].dihedral_nat = temp > 0 ? phi : (-1.0 * phi);
     }    
          
     return 0;
