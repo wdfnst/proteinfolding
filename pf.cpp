@@ -213,7 +213,8 @@ void pf::Parameter::display() {
 pf::Simulation::Simulation() { }
 
 pf::Simulation::Simulation(string conf_filename) : param(conf_filename) {
-    force(param);
+    // DUB:
+    force = Force(param);
 }
 
 int pf::Simulation::intpar(double enerkin) {
@@ -274,7 +275,7 @@ int pf::Simulation::intpar(double enerkin) {
 
     enerkin =  0.5 * enerkin * param.amass;
     // TL: It seems that tempins is unused.
-    double tempins = 2.0 * enerkin / (3.0 * param.npartM * param.boltz);
+    // double tempins = 2.0 * enerkin / (3.0 * param.npartM * param.boltz);
 
     // !  initialize histogram data
     for (int i = 0; i < param.nbin_f; i++) {
@@ -302,7 +303,7 @@ int pf::Simulation::intpar(double enerkin) {
     for (int i = 0; i < param.nWbin; i++) {
         param.PQwbin[i] = 0;
         for (int j = 0; j < param.nbin_b; j++) {
-            param.PQwQbbin[i,j] = 0;
+            param.PQwQbbin[i][j] = 0;
         } // fortran code: 110 continue
         for (int l = 0; l < param.nRbin; l++) {
             // PQwRbin(i,l,1)=0 PQwRbin(i,l,2)=0
@@ -894,13 +895,13 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot) {
     for (int i = 0; i < param.npartM; i++) {
         particle_list[i].x += (param.dt * particle_list[i].vx + pow(param.dt, 2)
                 * (particle_list[i].fxo + particle_list[i].frandxo -
-                    * param.gm * particle_list[i].vx) / 2.0)
+                    param.gm * particle_list[i].vx) / 2.0);
         particle_list[i].y += (param.dt * particle_list[i].vy + pow(param.dt, 2)
                 * (particle_list[i].fyo + particle_list[i].frandyo -
-                    * param.gm * particle_list[i].vy) / 2.0)
+                    param.gm * particle_list[i].vy) / 2.0);
         particle_list[i].z += (param.dt * particle_list[i].vz + pow(param.dt, 2)
                 * (particle_list[i].fzo + particle_list[i].frandzo -
-                    * param.gm * particle_list[i].vz) / 2.0)
+                    param.gm * particle_list[i].vz) / 2.0);
     }
 
     e_pot = 0.0;
@@ -909,7 +910,8 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot) {
     double e_tors_tot = 0.0;
     double e_unbond_tot = 0.0;
     double e_bind_tot = 0.0;
-    force(e_pot,e_unbond_tot,e_bind_tot,e_tors_tot,e_bend_tot,e_bond_tot);
+    force.force(particle_list, e_pot, e_unbond_tot, e_bind_tot, e_tors_tot,
+            e_bend_tot, e_bond_tot);
 
     // Calculate verlocity  
     for (int i = 0; i < param.npartM; i++) {
@@ -937,7 +939,7 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot) {
     // Calculate kinetic energy
     enerkin = 0.50 * enerkin * param.amass;
     // TL: It seems that tempins is unused.
-    double tempins = 2.0 * enerkin / (3.0 * param.npartM * param.boltz);
+    // double tempins = 2.0 * enerkin / (3.0 * param.npartM * param.boltz);
 
     // !  periodic boundary condiction is used based on the coordinate of 
     // residue 15
