@@ -109,6 +109,7 @@ public:
     double iQb_i, iQb_f;
 
     double pseudoQ_f, pseudoQ_b, dr_sol, ddr_sol;
+    // TL: means ?
     double PFBbin[nbinmax][nbinmax], PFbin[nbinmax], PBbin[nbinmax];
     double PFBEbin[nbinmax][nbinmax][nEbinmax];
 

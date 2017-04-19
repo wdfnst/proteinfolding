@@ -716,7 +716,7 @@ int pf::Simulation::start_simulation() {
                 particle_list[kl].frandzo = particle_list[kl].frandz;
             }
 
-            // Copy from fortran code
+            // Copy from fortran code, TL: means?
             nOutputCount = 0;
             int nOutputGap = -1;
             param.nadim = -1; // fortran code: nadim=-1
@@ -744,10 +744,10 @@ int pf::Simulation::start_simulation() {
                     // TL: It seems that nadim_old and nOutGap_old are unused.
                     nadim_old = param.nadim;
                     nOutGap_old = nOutputGap;
-                } 
+                }
                 
-                // !  restore
-                if(!(particle_list[0].vx >= -1e6
+                // ! restore, TL: why restore?
+                if (!(particle_list[0].vx >= -1e6
                             && particle_list[0].vx <= 1e6)) {
                     for (int i = 0; i < param.nparttol; i++) {
                         particle_list[i].x = particle_list[i].xsave;
@@ -758,7 +758,7 @@ int pf::Simulation::start_simulation() {
                     InitVel(enerkin);
                     force.force(particle_list, e_pot, e_unbond_tot, e_bind_tot,
                             e_tors_tot, e_bend_tot, e_bond_tot);
-                    RANTERM();
+                    RANTERM(); // TL: used for what?
 
                     for (int kl = 0; kl < param.npartM; kl++) {
                         particle_list[kl].fxo = particle_list[kl].fx;
@@ -1396,7 +1396,35 @@ int pf::Simulation::origin_adjust() {
 }
 
 int pf::Simulation::InitVel(double enerkin) {
+    double sumvx = 0.0;
+    double sumvy = 0.0;
+    double sumvz = 0.0;
+    double vm = sqrt(param.temp * param.boltz / param.amass);
 
+    for (int i = 0; i < param.npartM; i++) {
+        particle_list[i].vx = vm * gauss(xsi);
+        particle_list[i].vy = vm * gauss(xsi);
+        particle_list[i].vz = vm * gauss(xsi);
+        sumvx += particle_list[i].vx; 
+        sumvy += particle_list[i].vy; 
+        sumvz += particle_list[i].vz; 
+    }
+
+    sumvx /= param.npartM;
+    sumvy /= param.npartM;
+    sumvz /= param.npartM;
+    enerkin = 0.0;
+
+    for (int i = 0; i < param.npartM; i++) {
+        particle_list[i].vx -= sumvx;
+        particle_list[i].vx -= sumvx;
+        particle_list[i].vx -= sumvx;
+        enerkin += (pow(particle_list[i].vx, 2) + pow(particle_list[i].vy, 2)
+                    + pow(particle_list[i].vz, 2));
+    }
+    enerkin =  0.5 * enerkin * param.amass;
+    // TL: tempins is unused.
+    double tempins = 2.0 * enerkin / (3.0 * param.npartM * param.boltz);
     return 0;
 }
 
