@@ -3,8 +3,9 @@
 主程序IDPmd13_2.f90
 
 进行动力学模拟的输入文件：
-1.构象坐标文件（文件名N-PDBid.dat），包含每个氨基酸残基C-alpha原子的三维坐标； 2.相互作用文件（native contact map，文件名appNCS_PDBid.dat），包含每队残基的相互作用倾向和天然结构中的距离；
-3.参数文件（input.dat）
+> 1.构象坐标文件（文件名N-PDBid.dat），包含每个氨基酸残基C-alpha原子的三维坐标； 
+> 2.相互作用文件（native contact map，文件名appNCS_PDBid.dat），包含每队残基的相互作用倾向和天然结构中的距离；
+> 3.参数文件（input.dat）
 
 参数文件使用说明见word文档。
 
