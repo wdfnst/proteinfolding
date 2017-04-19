@@ -3,8 +3,7 @@
 主程序IDPmd13_2.f90
 
 进行动力学模拟的输入文件：
-1.构象坐标文件（文件名N-PDBid.dat），包含每个氨基酸残基C-alpha原子的三维坐标；
-2.相互作用文件（native contact map，文件名appNCS_PDBid.dat），包含每队残基的相互作用倾向和天然结构中的距离；
+1.构象坐标文件（文件名N-PDBid.dat），包含每个氨基酸残基C-alpha原子的三维坐标； 2.相互作用文件（native contact map，文件名appNCS_PDBid.dat），包含每队残基的相互作用倾向和天然结构中的距离；
 3.参数文件（input.dat）
 
 参数文件使用说明见word文档。
@@ -18,46 +17,46 @@
 
 配置文件说明:
 ===============================================================================
-1STF      10-Apr-2017
-.1STF.test
-95  307  20 1
-N-1STF.dat
-N-1STF.dat
-appNCS-1STF.dat
------------------parameter--------------------
-1334887077757897                                 ; random numer, 16 characters
-      1.000       1.000       1.000      1.000   ; epsil, epsil1, epsil2, enscale
-    100.000      20.000       1.000      0.500   ; ck_r, ck_tht, ck_phi1, ck_phi3
-      4.000       1.000       1.200              ; sigma_ij, amass, gamma
-      1.000       1.000                          ; avsn0, boltz
-      1.000       0.100                          ; gr0, gdr
-      0.005       1.000       0                  ; s_dt, s_gm, iFixKr
-      6           2           3                  ; k_sol, n_sol, m_sol
-      0.200       0.100                          ; epsilon_p, epsilon_pp
-      1                                          ; temp
-      0.0         0.0         0.0                ; ga1_f1, ga2_f1, gQ0_f1
-      0.0         0.0         0.0                ; ga1_f2, ga2_f2, gQ0_f2
-      0.0         0.0         0.0                ; ga1_b, ga2_b, gQ0_b
-      0.0         0.0      0.0       0.02        ; ga1_w, ga2_w, gQ0_w, alpha_Qw
-      1                                          ; Is_Solvation
-      1           0           200                ; nConform, nCon0, nRunConf
-      500 0.01  0 1000  0 1000                   ; gQbnativ, gQbdenatural, gQf1nativ, gQf1denatural, gQf2nativ, gQf2denatural
-     500000     50000000                         ; nsnap, nstep
-        400      100000    500000                ; nConformOutput, nOutput0, ndOutput
--2 1000  -2 1000  -2 1000                        ; outQf1_i, outQf1_f, outQf2_i, outQf2_f, outQb_i, outQb_f
-         20     2000000                          ; nbinsnap, nbinsnap0
-        100         100                          ; nbin_f, nbin_b
-      3       1        0.000                     ; dbin_f, dbin_b, vbin0
-          0         100         7.0   -350.0     ; IsEbin, nEbin, dEbin, vEbin0
-          1          100         0.6   -57       ; IsEbbin, nEbbin, dEbbin, vEbbin0
-          0          100        1.000     0.000  ; IsRbin, nRbin, dRbin, vRbin0
-          1          100        0.5   -25  0.001 ; IsWbin, nWbin, dWbin, vWbin0, cri_Qb
-      7500.0      10.000                         ; PBC: pL, dl
-      1.200       1.200         0.96             ; Alpha1, Alpha2, Beta
-      0.000       5.000                          ; Delta, CritR_non
-参数说明：
-
 1STF      10-Apr-2017    
+.1STF.test    
+95  307  20 1    
+N-1STF.dat    
+N-1STF.dat    
+appNCS-1STF.dat    
+-----------------parameter--------------------    
+1334887077757897                                 ; random numer, 16 characters    
+      1.000       1.000       1.000      1.000   ; epsil, epsil1, epsil2, enscale    
+    100.000      20.000       1.000      0.500   ; ck_r, ck_tht, ck_phi1, ck_phi3    
+      4.000       1.000       1.200              ; sigma_ij, amass, gamma    
+      1.000       1.000                          ; avsn0, boltz    
+      1.000       0.100                          ; gr0, gdr    
+      0.005       1.000       0                  ; s_dt, s_gm, iFixKr    
+      6           2           3                  ; k_sol, n_sol, m_sol    
+      0.200       0.100                          ; epsilon_p, epsilon_pp    
+      1                                          ; temp    
+      0.0         0.0         0.0                ; ga1_f1, ga2_f1, gQ0_f1    
+      0.0         0.0         0.0                ; ga1_f2, ga2_f2, gQ0_f2    
+      0.0         0.0         0.0                ; ga1_b, ga2_b, gQ0_b    
+      0.0         0.0      0.0       0.02        ; ga1_w, ga2_w, gQ0_w, alpha_Qw    
+      1                                          ; Is_Solvation    
+      1           0           200                ; nConform, nCon0, nRunConf    
+      500 0.01  0 1000  0 1000                   ; gQbnativ, gQbdenatural, gQf1nativ, gQf1denatural, gQf2nativ, gQf2denatural    
+     500000     50000000                         ; nsnap, nstep    
+        400      100000    500000                ; nConformOutput, nOutput0, ndOutput    
+-2 1000  -2 1000  -2 1000                        ; outQf1_i, outQf1_f, outQf2_i, outQf2_f, outQb_i, outQb_f    
+         20     2000000                          ; nbinsnap, nbinsnap0    
+        100         100                          ; nbin_f, nbin_b    
+      3       1        0.000                     ; dbin_f, dbin_b, vbin0    
+          0         100         7.0   -350.0     ; IsEbin, nEbin, dEbin, vEbin0    
+          1          100         0.6   -57       ; IsEbbin, nEbbin, dEbbin, vEbbin0    
+          0          100        1.000     0.000  ; IsRbin, nRbin, dRbin, vRbin0    
+          1          100        0.5   -25  0.001 ; IsWbin, nWbin, dWbin, vWbin0, cri_Qb    
+      7500.0      10.000                         ; PBC: pL, dl    
+      1.200       1.200         0.96             ; Alpha1, Alpha2, Beta    
+      0.000       5.000                          ; Delta, CritR_non    
+参数说明：    
+    
+1STF      10-Apr-2017        
 模拟的体系名与模拟日期。不影响程序的运行。    
 .1STF.test    
 统一的后缀名。方便整理用，本次模拟所有的输出文件均具有此后缀。    
@@ -95,7 +94,7 @@ appNCS-1STF.dat
       0.0         0.0         0.0                 ; ga1_f1, ga2_f1, gQ0_f1    
       0.0         0.0         0.0                 ; ga1_f2, ga2_f2, gQ0_f2    
       0.0         0.0         0.0                 ; ga1_b, ga2_b, gQ0_b    
-      0.0         0.0      0.0       0.02      ; ga1_w, ga2_w, gQ0_w, alpha_Qw    
+      0.0         0.0      0.0       0.02         ; ga1_w, ga2_w, gQ0_w, alpha_Qw    
 偏置场（bias potential）参数。为了能够充分采样而采用的额外偏置场，对所有偏置场条件模拟完毕之后再将结果整合。用于热力学模拟，因为不能够反映时间所以动力学模拟不采用偏置场。    
       1                                           ; Is_Solvation    
 溶剂化模式。0为非溶剂化模型，1为溶剂化模型。    
