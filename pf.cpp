@@ -208,6 +208,335 @@ void pf::Parameter::display() {
 /////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////
+/**********************Definition of class Particle*********************/
+/////////////////////////////////////////////////////////////////////////
+pf::Particle::Particle(double x, double y, double z) {
+    this->x = x;
+    this->y = y;
+    this->z = z;
+}
+/////////////////////////////////////////////////////////////////////////
+/******************End of definition of class Particle******************/
+/////////////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////
+/*************************Definition of class Force*********************/
+/////////////////////////////////////////////////////////////////////////
+pf::Force::Force(Parameter &param) {
+    this->param = param;
+}
+
+int pf::Force::force(vector<Particle> &particle_list, double &e_pot, 
+        double &e_unbond_tot, double &e_bind_tot, double &e_tors_tot, 
+        double &e_bend_tot, double &e_bond_tot) {
+    e_pot=0.0;
+
+    for (int i = 0; i < param.npartM; i++ ) {
+        particle_list[i].fx = 0;
+        particle_list[i].fy = 0;
+        particle_list[i].fz = 0;
+        particle_list[i].fxr = 0;
+        particle_list[i].fyr = 0;
+        particle_list[i].fzr = 0;
+        particle_list[i].fxth = 0;
+        particle_list[i].fyth = 0;
+        particle_list[i].fzth = 0;
+        particle_list[i].fxph = 0;
+        particle_list[i].fyph = 0;
+        particle_list[i].fzph = 0;
+        particle_list[i].fxun = 0; 
+        particle_list[i].fyun = 0;
+        particle_list[i].fzun = 0;
+    }
+
+    e_bond_tot = 0.0;
+    e_bend_tot = 0.0;
+    e_tors_tot = 0.0;
+    e_unbond_tot = 0.0;
+    e_bind_tot = 0.0;
+
+    fbond(particle_list, e_bond_tot);
+    fbend(particle_list, e_bend_tot);
+    ftorsion(particle_list, e_tors_tot);
+    funbond(particle_list, e_unbond_tot, e_bind_tot);
+
+    for (int i = 0; i < param.npartM; i++) {
+        particle_list[i].fx += (particle_list[i].fxr + particle_list[i].fxth +
+            particle_list[i].fxph + particle_list[i].fxun);
+        particle_list[i].fy += (particle_list[i].fyr + particle_list[i].fyth +
+                particle_list[i].fyph + particle_list[i].fyun);
+        particle_list[i].fz += (particle_list[i].fzr + particle_list[i].fzth +
+                particle_list[i].fzph + particle_list[i].fzun);
+    }
+
+    e_pot = e_bond_tot + e_bend_tot + e_tors_tot + e_unbond_tot;
+    return 0;
+}
+
+double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot) {
+    for (int i = 0; i < param.npartM - 1; i++) {
+        if (i == param.npart1) break;
+        int j = i + 1;
+        double xij = particle_list[i].x - particle_list[j].x;
+        double yij = particle_list[i].y - particle_list[j].y;
+        double zij = particle_list[i].z - particle_list[j].z;
+
+        double rij = sqrt(pow(xij, 2) + pow(yij, 2) + pow(zij, 2));
+
+        if (rij < eps1) break;
+
+        double e_bond = param.ck_r * pow((rij - particle_list[i].rbond_nat), 2);
+        e_bond_tot += e_bond;
+        double e_bond_drv = -2 * param.ck_r * (rij -
+                particle_list[i].rbond_nat);
+        double drix = xij / rij;
+        double driy = yij / rij;
+        double driz = zij / rij;
+        double drjx = -drix;
+        double drjy = -driy;
+        double drjz = -driz;
+
+        if (i == param.npart1) {
+            particle_list[i].fxr += e_bond_drv * drix;
+            particle_list[i].fyr += e_bond_drv * driy;
+            particle_list[i].fzr += e_bond_drv * driz;
+            particle_list[j].fxr += e_bond_drv * drix;
+            particle_list[j].fyr += e_bond_drv * driy;
+            particle_list[j].fzr += e_bond_drv * driz;
+        }
+    }
+
+    return 0;
+}
+
+double pf::Force::fbend(vector<Particle> &particle_list, double &e_bend_tot) {
+    for (int i = 0; i < param.npartM - 2; i++) {
+        int j = i + 1;
+        int k = i + 2;
+        double xij = particle_list[i].x - particle_list[j].x;
+        double yij = particle_list[i].y - particle_list[j].y;
+        double zij = particle_list[i].z - particle_list[j].z;
+
+        double xkj = particle_list[k].x - particle_list[j].x;
+        double ykj = particle_list[k].y - particle_list[j].y;
+        double zkj = particle_list[k].z - particle_list[j].z;
+
+        double rij = sqrt(pow(xij, 2) + pow(yij, 2) + pow(zij, 2));
+        double rkj = sqrt(pow(xkj, 2) + pow(ykj, 2) + pow(zkj, 2));
+
+        if (rij < eps || rkj < eps) continue;
+        double costheta = (xij * xkj + yij * ykj + zij * zkj) / (rij * rkj);
+        // fortran: if(abs(costheta).gt.epstht) costheta=sign(epstht,costheta)
+        if(fabs(costheta) > epstht) {
+            costheta = costheta > 0 ? epstht : (-1 * epstht);
+        }
+
+        double theta = acos(costheta);
+        double delta = theta - particle_list[i].theta_nat;
+        
+
+        double tem = 0.0;
+        if (i <= param.npart1 - 2) {
+            tem = param.Alpha1;
+        } else if (i > param.npart1) {
+            tem = param.Alpha2;
+        }
+        
+        double e_bend = tem * param.ck_tht * pow(delta, 2);
+        double e_bend_drv = -1 * tem * 2 * param.ck_tht * delta;
+
+        e_bend_tot = e_bend_tot + e_bend;
+        double sintinv = 1.0 / sin(theta);
+
+        double drix = sintinv * (costheta * xij / rij - xkj / rkj) / rij;
+        double driy = sintinv * (costheta * yij / rij - ykj / rkj) / rij;
+        double driz = sintinv * (costheta * zij / rij - zkj / rkj) / rij;
+ 
+        double drkx = sintinv * (costheta * xkj / rkj - xij / rij) / rkj;
+        double drky = sintinv * (costheta * ykj / rkj - yij / rij) / rkj;
+        double drkz = sintinv * (costheta * zkj / rkj - zij / rij) / rkj;
+
+        particle_list[i].fxth += e_bend_drv * drix;
+        particle_list[i].fyth += e_bend_drv * driy;
+        particle_list[i].fzth += e_bend_drv * driz;
+
+        // fortran code: fxth(j)=fxth(j)+e_bend_drv*(-drix-drkx)
+        // TL: -drix
+        particle_list[j].fxth += e_bend_drv *(-drix - drkx);
+        particle_list[j].fyth += e_bend_drv *(-driy - drky);
+        particle_list[j].fzth += e_bend_drv *(-driz - drkz);
+
+        particle_list[k].fxth += e_bend_drv * drkx;
+        particle_list[k].fyth += e_bend_drv * drky;
+        particle_list[k].fzth += e_bend_drv * drkz;
+    }
+
+    return 0;
+}
+
+double pf::Force::ftorsion(vector<Particle> &particle_list,
+        double &e_tors_tot) {
+    for (int i = 0; i < param.npartM - 3; i++) {
+        int j = i + 1;
+        int k = i = 2;
+        int l = i + 3;
+        
+        double xij = particle_list[i].x - particle_list[j].x;
+        double yij = particle_list[i].y - particle_list[j].y;
+        double zij = particle_list[i].z - particle_list[j].z;
+
+        double xkj = particle_list[k].x - particle_list[j].x;
+        double ykj = particle_list[k].y - particle_list[j].y;
+        double zkj = particle_list[k].z - particle_list[j].z;
+
+        double xkl = particle_list[k].x - particle_list[l].x;
+        double ykl = particle_list[k].y - particle_list[l].y;
+        double zkl = particle_list[k].z - particle_list[l].z;
+
+
+        double rij = sqrt(pow(xij, 2) + pow(xij, 2) + pow(xij, 2));
+        double rkj = sqrt(pow(yij, 2) + pow(yij, 2) + pow(yij, 2));
+        double rkl = sqrt(pow(zij, 2) + pow(zij, 2) + pow(zij, 2));
+
+        double xmj = yij * zkj - ykj * zij;
+        double ymj = zij * xkj - zkj * xij;
+        double zmj = xij * ykj - xkj * yij;
+
+        double xnk = ykj * zkl - ykl * zkj;
+        double ynk = zkj * xkl - zkl * xkj;
+        double znk = xkj * ykl - xkl * ykj;
+
+        double xil = ymj * znk - ynk * zmj;
+        double yil = zmj * xnk - znk * xmj;
+        double zil = xmj * ynk - xnk * ymj;
+        
+        double rnk = sqrt(pow(xnk, 2) + pow(ynk, 2) + pow(znk, 2));
+        double rmj = sqrt(pow(xmj, 2) + pow(ymj, 2) + pow(zmj, 2));
+
+        if (pow(rnk, 2) < eps || pow(rmj, 2) < eps) break; 
+
+        double phi = (xnk * xmj + ynk * ymj + znk * zmj) / (rnk * rmj);
+        if (fabs(phi) > eps1) {
+            particle_list[l].x += eps2;
+            particle_list[l].y += eps2;
+            particle_list[l].z += eps2;
+         
+            xkl = particle_list[k].x - particle_list[l].x;
+            ykl = particle_list[k].y - particle_list[l].y;
+            zkl = particle_list[k].z - particle_list[l].z;
+
+            rkl = sqrt(pow(xkl, 2) + pow(ykl, 2) + pow(zkl, 2));
+
+            xnk = ykj * zkl - ykl * zkj; 
+            ynk = zkj * xkl - zkl * xkj;
+            znk = xkj * ykl - xkl * ykj;
+         
+            xil = ymj * znk - ynk * zmj;
+            yil = zmj * xnk - znk * xmj;
+            zil = xmj * ynk - xnk * ymj;
+         
+            rnk = sqrt(pow(xnk, 2) + pow(ynk, 2) + pow(znk, 2));
+            rmj = sqrt(pow(xmj, 2) + pow(ymj, 2) + pow(zmj, 2));
+     
+            if (pow(rnk, 2) < eps || pow(rmj, 2) < eps) continue; 
+            phi = (xnk * xmj + ynk * ymj + znk * zmj) / (rnk * rmj);
+        } 
+
+	    if(phi > eps1) phi = eps1;
+	    if(phi < -1.0 * eps1) phi = eps1;
+
+        phi = acos(phi);
+        double tmpvalue = xkj * xil + ykj * yil + zkj * zil; 
+        phi = tmpvalue > 0 ? phi : (-1 * phi);
+        double phi_0 = particle_list[i].dihedral_nat;
+
+
+        double e_tors = param.ck_phi1 * (1.0 - cos(phi - phi_0)) +
+            param.ck_phi3 * (1.0 - cos(3.0 * (phi - phi_0)));
+
+        double drv1 = param.ck_phi1 * sin(phi - phi_0);
+        double drv2 = 3.0 * param.ck_phi3 * (4.0 * pow(cos(phi), 2.0) *
+                sin(phi - 3.0 * phi_0) + 3.0 * cos(phi) * sin(3.0 * phi_0) -
+                sin(phi) * cos(3.0 * phi_0));
+        
+        double e_tors_drv = -(drv1 + drv2);
+
+        double tem = 0.0;
+        if(i <= param.npart1 - 3) { 
+            tem = param.Alpha1;
+        }
+        else if(i > param.npart1) { 
+            tem = param.Alpha2;
+        }
+        e_tors_tot += tem * e_tors;
+
+        double rijrkj = (xij * xkj + yij * ykj + zij * zkj) / pow(rkj, 2);
+        double rklrkj = (xkl * xkj + ykl * ykj + zkl * zkj) / pow(rkj, 2);
+
+        double drix = xmj * rkj / pow(rmj, 2);
+        double driy = ymj * rkj / pow(rmj, 2);
+        double driz = zmj * rkj / pow(rmj, 2);
+
+        double drlx = -xnk * rkj / pow(rnk, 2); 
+        double drly = -ynk * rkj / pow(rnk, 2);
+        double drlz = -znk * rkj / pow(rnk, 2); 
+
+        double drjx = (rijrkj - 1) * drix - rklrkj * drlx;
+        double drjy = (rijrkj - 1) * driy - rklrkj * drly;
+        double drjz = (rijrkj - 1) * driz - rklrkj * drlz;
+
+        double drkx = (rklrkj - 1) * drlx - rijrkj * drix;
+        double drky = (rklrkj - 1) * drly - rijrkj * driy;
+        double drkz = (rklrkj - 1) * drlz - rijrkj * driz;
+
+        particle_list[i].fxph += tem * e_tors_drv * drix;
+        particle_list[i].fyph += tem * e_tors_drv * driy;
+        particle_list[i].fzph += tem * e_tors_drv * driz;
+
+        particle_list[j].fxph  += tem * e_tors_drv * drjx;
+        particle_list[j].fyph  += tem * e_tors_drv * drjy;
+        particle_list[j].fzph  += tem * e_tors_drv * drjz;
+
+        particle_list[k].fxph += tem * e_tors_drv * drkx;
+        particle_list[k].fyph += tem * e_tors_drv * drky;
+        particle_list[k].fzph += tem * e_tors_drv * drkz;
+
+        particle_list[l].fxph += tem * e_tors_drv * drlx;
+        particle_list[l].fyph += tem * e_tors_drv * drly;
+        particle_list[l].fzph += tem * e_tors_drv * drlz;
+    }
+
+    return 0;
+}
+
+double pf::Force::funbond(vector<Particle> &particle_list, double &e_unbond_tot,
+        double &e_bind_tot) {
+
+    if(param.Is_Solvation == 0) { 
+        funbond_without(particle_list, e_unbond_tot, e_bind_tot);
+    }
+    else if(param.Is_Solvation == 1) { 
+        funbond_with(particle_list, e_unbond_tot, e_bind_tot);
+    }
+    return 0;
+}
+
+double pf::Force::funbond_with(vector<Particle> &particle_list,
+        double &e_unbond_tot, double &e_bind_tot) {
+
+    return 0;
+}
+
+double pf::Force::funbond_without(vector<Particle> &particle_list,
+        double &e_unbond_tot, double &e_bind_tot) {
+
+    return 0;
+}
+//////// /////////////////////////////////////////////////////////////////
+/******* ***************End of definition of class Force*****************/
+//////// /////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////
 /*******************Definition of class Simulation**********************/
 /////////////////////////////////////////////////////////////////////////
 pf::Simulation::Simulation() { }
@@ -691,6 +1020,7 @@ int pf::Simulation::start_simulation() {
                 particle_list[j].z = particle_list[j].zinit;
             }
 
+            // TL: Why needs orginal adjustment?
             origin_adjust();
             InitVel(enerkin);
             // The following variable is used before definition, fortran code:
@@ -722,6 +1052,7 @@ int pf::Simulation::start_simulation() {
             param.nadim = -1; // fortran code: nadim=-1
 
             // ! main dynamics cycle
+            // fortran code: do 100 nadim_new=0,nstep
             for (int j = 0; j < param.nstep; j++) {
                 param.nadim += 1;
                 verlet(enerkin, e_pot);
@@ -758,7 +1089,8 @@ int pf::Simulation::start_simulation() {
                     InitVel(enerkin);
                     force.force(particle_list, e_pot, e_unbond_tot, e_bind_tot,
                             e_tors_tot, e_bend_tot, e_bond_tot);
-                    RANTERM(); // TL: used for what?
+                    // TL: usage?
+                    RANTERM();
 
                     for (int kl = 0; kl < param.npartM; kl++) {
                         particle_list[kl].fxo = particle_list[kl].fx;
@@ -788,6 +1120,7 @@ int pf::Simulation::start_simulation() {
                     break;
                 }
             } // fortran code: 100 continue
+
             aveNadim += param.nadim;
             int k = 0;
             if(!(particle_list[0].vx >= -1e8 && particle_list[0].vx <= 1e8)) {
@@ -973,77 +1306,6 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot) {
                                           
     return 0;                             
 }                                         
-
-/////////////////////////////////////////////////////////////////////////
-/******************End of definition of class Simulation****************/
-/////////////////////////////////////////////////////////////////////////
-
-/////////////////////////////////////////////////////////////////////////
-/**********************Definition of class Particle*********************/
-/////////////////////////////////////////////////////////////////////////
-pf::Particle::Particle(double x, double y, double z) {
-    this->x = x;
-    this->y = y;
-    this->z = z;
-}
-
-/////////////////////////////////////////////////////////////////////////
-/******************End of definition of class Particle******************/
-/////////////////////////////////////////////////////////////////////////
-
-/////////////////////////////////////////////////////////////////////////
-/*************************Definition of class Force*********************/
-/////////////////////////////////////////////////////////////////////////
-pf::Force::Force(Parameter &param) {
-    this->param = param;
-}
-
-int pf::Force::force(vector<Particle> &particle_list, double &e_pot, 
-        double &e_unbond_tot, double &e_bind_tot, double &e_tors_tot, 
-        double &e_bend_tot, double &e_bond_tot) {
-    e_pot=0.0;
-
-    for (int i = 0; i < param.npartM; i++ ) {
-        particle_list[i].fx = 0;
-        particle_list[i].fy = 0;
-        particle_list[i].fz = 0;
-        particle_list[i].fxr = 0;
-        particle_list[i].fyr = 0;
-        particle_list[i].fzr = 0;
-        particle_list[i].fxth = 0;
-        particle_list[i].fyth = 0;
-        particle_list[i].fzth = 0;
-        particle_list[i].fxph = 0;
-        particle_list[i].fyph = 0;
-        particle_list[i].fzph = 0;
-        particle_list[i].fxun = 0; 
-        particle_list[i].fyun = 0;
-        particle_list[i].fzun = 0;
-    }
-
-    e_bond_tot = 0.0;
-    e_bend_tot = 0.0;
-    e_tors_tot = 0.0;
-    e_unbond_tot = 0.0;
-    e_bind_tot = 0.0;
-
-    fbond(particle_list, e_bond_tot);
-    fbend(particle_list, e_bend_tot);
-    ftorsion(particle_list, e_tors_tot);
-    funbond(particle_list, e_unbond_tot, e_bind_tot);
-
-    for (int i = 0; i < param.npartM; i++) {
-        particle_list[i].fx += (particle_list[i].fxr + particle_list[i].fxth +
-            particle_list[i].fxph + particle_list[i].fxun);
-        particle_list[i].fy += (particle_list[i].fyr + particle_list[i].fyth +
-                particle_list[i].fyph + particle_list[i].fyun);
-        particle_list[i].fz += (particle_list[i].fzr + particle_list[i].fzth +
-                particle_list[i].fzph + particle_list[i].fzun);
-    }
-
-    e_pot = e_bond_tot + e_bend_tot + e_tors_tot + e_unbond_tot;
-    return 0;
-}
 
 int pf::Simulation::pbc_shift() {
 	// fortran code: if(npart1.le.0) goto 400
@@ -1636,15 +1898,15 @@ int pf::Simulation::nativeinformation() {
 
         double phi = acos(phi);
         //fortran code: dihedral_nat(i)=sign(phi,xkj*xil+ykj*yil+zkj*zil)
-        double temp = xkj * xil + ykj * yil + zkj * zil;
-        particle_list[i].dihedral_nat = temp > 0 ? phi : (-1.0 * phi);
-    }    
+        double tempval = xkj * xil + ykj * yil + zkj * zil;
+        particle_list[i].dihedral_nat = tempval > 0 ? phi : (-1.0 * phi);
+    }
          
     return 0;
 }        
-//////// /////////////////////////////////////////////////////////////////
-/******* ***************End of definition of class Force*****************/
-//////// /////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+/******************End of definition of class Simulation****************/
+/////////////////////////////////////////////////////////////////////////
          
 int main()
 {

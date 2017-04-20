@@ -25,6 +25,9 @@ static const int MAXUNBO = MAXN * (MAXN - 1) / 2;
 static const int nbinmax = 105;
 static const int nEbinmax = 105;
 static const int nRbinmax = 105;
+// TL: means and usages ? Whether are they all same in all functions?
+static const double eps = 1.0e-3, eps1 = 1.0 - 1.0e-6, eps2 = 1.0e-4,
+      epstht = 1.0-1.0e-12;
 
 class Logger {
 public:
@@ -189,6 +192,11 @@ public:
     double funbond(vector<Particle> &particle_list, double &e_unbond_tot, 
             double &e_bind_tot);
 
+    double funbond_with(vector<Particle> &particle_list, double &e_unbond_tot, 
+            double &e_bind_tot);
+    double funbond_without(vector<Particle> &particle_list,
+            double &e_unbond_tot, double &e_bind_tot);
+
 private:
     Parameter param;
 
@@ -268,7 +276,6 @@ private:
     double xsi = 0.0;
     const double pi = 3.141592654, a1 = 3.949846138, a3 = 0.252408784,
           a5 = 0.076542912, a7 = 0.008355968, a9 = 0.029899776;
-    const double eps=1.0e-3, eps1=1.0-1.0e-6, eps2=1.0e-4, epstht=1.0-1.0e-12;
     // TL: when to initialize the m(4), while l(4) is init in setrn()
     int m[4], l[4];
 

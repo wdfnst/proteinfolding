@@ -1076,7 +1076,7 @@
       do 2  i=1,npartM
       fx(i)=0
       fy(i)=0
-      fz(i)=0
+      az(i)=0
       fxr(i)=0
       fyr(i)=0
       fzr(i)=0
