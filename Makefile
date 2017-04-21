@@ -2,7 +2,7 @@
 #Makefile for simple programs
 ###########################################
 INC= -Iinclude/zoltan/
-LIB= -L/usr/local/lib/ -Llib/ -lzoltan -lstdc++ 
+LIB= -lstdc++ 
 CC= mpic++
 CC_FLAG=-Wall -std=c++11
 

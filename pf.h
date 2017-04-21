@@ -22,12 +22,11 @@ namespace pf {
 // Const definition, which don't appear in configure file
 static const int MAXN = 430;
 static const int MAXUNBO = MAXN * (MAXN - 1) / 2;
-// 直方图区间数
+// Statistics: sample number of histogram
 static const int nbinmax = 105;
 static const int nEbinmax = 105;
 static const int nRbinmax = 105;
-// TL: means and usages ? Whether are they all same in all functions?
-// 调整相互作用的强度参数
+// Consts used to strength of interactions (调整相互作用的强度参数)
 static const double eps = 1.0e-3, eps1 = 1.0 - 1.0e-6, eps2 = 1.0e-4,
       epstht = 1.0-1.0e-12;
 
@@ -114,23 +113,25 @@ public:
     double iQb_i, iQb_f;
 
     double pseudoQ_f, pseudoQ_b, dr_sol, ddr_sol;
-    // TL: means ?
+
+    // Used to store statistical samples
     double PFBbin[nbinmax][nbinmax], PFbin[nbinmax], PBbin[nbinmax];
     double PFBEbin[nbinmax][nbinmax][nEbinmax];
-
     double PQbEbbin[nbinmax][nEbinmax];
     double PFBRbin[nbinmax][nbinmax][nRbinmax];
     double PFFBbin[nbinmax][nbinmax][nbinmax];
     double PQwbin[nbinmax], PQwQbbin[nbinmax][nbinmax], 
            PQwQfbin[nbinmax][nbinmax], PQwRbin[nbinmax][nRbinmax][2],
            PQwEbbin[nbinmax][nEbinmax][2];
+
     double R;
     double gQ_non_f, gQ_non_b;
     
-    // The following arrays keep unchanged after execute nativeinformation()
+    // bond length, non-bond length, bond angle, dihedral angle
+    // (键长/键角/二面角和非键距离)
+    // Arrays keep unchanged after execute nativeinformation()
     double rbond_nat[MAXN], runbond_nat[MAXUNBO], theta_nat[MAXN], \
         dihedral_nat[MAXN];
-
 
 }; // end of class Parameter
 
@@ -141,7 +142,6 @@ class Particle {
 public:
     Particle(double x, double y, double z);
 
-// TODO: Sparate the parameters which belong to class Parameter
 public:
     // Arguments which don't appear in configure file
     // double xinit[MAXN], yinit[MAXN], zinit[MAXN];
@@ -165,14 +165,14 @@ public:
     double x, y, z;    
     double vx, vy, vz;
     double fx, fy, fz;
-    // *o: *old
+    // *o: *old, for the f_{k + 1} = f_{k} + f_{k - 1}
     double fxo, fyo, fzo;
     // *r, *th, *ph, *un: rbond, theta, phi, unbond
     double fxr, fyr, fzr;
     double fxth, fyth, fzth;
     double fxph, fyph, fzph;
     double fxun, fyun, fzun;
-    // *rand*: 布朗运动产生的随机力
+    // *rand*: force by Brownian Motion (布朗运动产生的随机力)
     double frandx, frandy, frandz;
     double frandxo, frandyo, frandzo;
     int intpar(double enerkin);
@@ -239,15 +239,17 @@ public:
     int read_appNCS(string filename);
     int read_initalconform(string filename);
 
-    // TODO: supply the comments and definition of these functions
     // Out of outermost loop
     int nativeinformation();
     // In outermost loop
+    // Algin conformation to coordinate system
     int origin_adjust();
     int InitVel(double enerkin);
 
     // Other functions
+    // Related to Random generator
     int RANTERM();
+    // verlet: one sort of dynamics model
     int verlet(double &enerkin, double &e_pot);
     int pbc_shift();
     int output_conformation(int &nOutputGap, int &nOutputCount);

@@ -29,6 +29,11 @@ string pf::Logger::format(const char* fmt, ...){
     return ret;
 }
 
+int pf::Logger::info(string filename, string msg){
+
+    return 0;
+}
+
 // Constructors of class Parameter
 pf::Parameter::Parameter() {}
 pf::Parameter::Parameter(string filename) {
@@ -222,6 +227,8 @@ pf::Particle::Particle(double x, double y, double z) {
 /////////////////////////////////////////////////////////////////////////
 /*************************Definition of class Force*********************/
 /////////////////////////////////////////////////////////////////////////
+pf::Force::Force() { }
+
 pf::Force::Force(Parameter &param) {
     this->param = param;
 }
@@ -300,9 +307,10 @@ double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot) {
             particle_list[i].fxr += e_bond_drv * drix;
             particle_list[i].fyr += e_bond_drv * driy;
             particle_list[i].fzr += e_bond_drv * driz;
-            particle_list[j].fxr += e_bond_drv * drix;
-            particle_list[j].fyr += e_bond_drv * driy;
-            particle_list[j].fzr += e_bond_drv * driz;
+
+            particle_list[j].fxr += e_bond_drv * drjx;
+            particle_list[j].fyr += e_bond_drv * drjy;
+            particle_list[j].fzr += e_bond_drv * drjz;
         }
     }
 
@@ -393,8 +401,8 @@ double pf::Force::ftorsion(vector<Particle> &particle_list,
         double ykl = particle_list[k].y - particle_list[l].y;
         double zkl = particle_list[k].z - particle_list[l].z;
 
-
-        double rij = sqrt(pow(xij, 2) + pow(xij, 2) + pow(xij, 2));
+        // rij is never used
+        // double rij = sqrt(pow(xij, 2) + pow(xij, 2) + pow(xij, 2));
         double rkj = sqrt(pow(yij, 2) + pow(yij, 2) + pow(yij, 2));
         double rkl = sqrt(pow(zij, 2) + pow(zij, 2) + pow(zij, 2));
 
@@ -886,7 +894,7 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
 
     // !  Lagrange constrant potential: 
     // !  Fixed B
-    double gQ_w = param.gQ_b - param.alpha_Qw * sum_rij;
+    param.gQ_w = param.gQ_b - param.alpha_Qw * sum_rij;
     double eGr_f1 = param.ga1_f1 * (param.gQ_f1 - param.gQ0_f1) +
         param.ga2_f1 * pow(param.gQ_f1 - param.gQ0_f1, 2);
     double eGr_f2 = param.ga1_f2 * (param.gQ_f2 - param.gQ0_f2 ) +
@@ -896,7 +904,7 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
     double eGr_f = eGr_f1 + eGr_f2;
     double eGr_w = param.ga1_w * (param.gQ_w - param.gQ0_w ) +
         param.ga2_w * pow(param.gQ_w - param.gQ0_w, 2);
-    double eGr = eGr_f + eGr_b + eGr_w;
+    param.eGr = eGr_f + eGr_b + eGr_w;
 
     if(param.eGr < 1e-5 && param.eGr > -1e-5) return 0;
 
@@ -955,9 +963,9 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
 
     return 0;
 }
-//////// /////////////////////////////////////////////////////////////////
-/******* ***************End of definition of class Force*****************/
-//////// /////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+/**********************End of definition of class Force*****************/
+/////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////
 /*******************Definition of class Simulation**********************/
@@ -977,7 +985,7 @@ int pf::Simulation::intpar(double enerkin) {
     param.dt = param.s_dt * timeunit;
     param.gm = param.s_gm / timeunit;
 
-    // c_* 拟合参数
+    // c_*: intensity arguments 
     param.c_0 = param.dt * param.gm / (2.0 * param.amass);
     param.c_1 = (1.0 - param.c_0) * (1.0 - param.c_0 + pow(param.c_0, 2));
     param.c_2 = (param.dt / (2 * param.amass)) * 
@@ -1413,10 +1421,11 @@ int pf::Simulation::start_simulation() {
     intpar(enerkin);
 
     // !  total number of folding/unfolding events
-    // 动力学模拟时，才有意义；热力学模拟无意义
+    // Meaningful when dynamics simulation, otherwise they are useless
+    // (动力学模拟时，才有意义；热力学模拟无意义)
     int nFoldTol   = 0;
     int nunFoldTol = 0;
-    // 发生折叠或解折叠的平均步数
+    // Average steps of folding or unbolding (发生折叠或解折叠的平均步数)
     int aveNadim   = 0;
 
     read_initalconform(param.initialconform_filename);
@@ -1436,7 +1445,8 @@ int pf::Simulation::start_simulation() {
         read_initalconform(param.initialconform_filename);
     
         // Copy from fortran code, TL: means?
-        // 对得到的所有轨迹进行统计：发生/未发生的百分比
+        // Utility counter for all trajectories
+        // (对得到的所有轨迹进行统计：发生/未发生的百分比)
         int nFoldSub = 0;
         int nunFoldSub = 0;
 
@@ -1449,7 +1459,6 @@ int pf::Simulation::start_simulation() {
                 particle_list[j].z = particle_list[j].zinit;
             }
 
-            // TL: Why needs orginal adjustment?
             origin_adjust();
             InitVel(enerkin);
             // The following variable is used before definition, fortran code:
@@ -1477,10 +1486,10 @@ int pf::Simulation::start_simulation() {
 
             // Copy from fortran code, TL: means?
             nOutputCount = 0;
-            // 控制在哪一步进行输出
+            // Control the output steps (控制在哪一步进行输出)
             int nOutputGap = -1;
 
-            // 下面循环计数
+            // Counter for the following loop (对下面循环进行计数)
             param.nadim = -1; // fortran code: nadim=-1
             // ! main dynamics cycle
             // fortran code: do 100 nadim_new=0,nstep
@@ -1552,7 +1561,7 @@ int pf::Simulation::start_simulation() {
                 }
             } // fortran code: 100 continue
 
-            // 动力学模拟情况下: 折叠计数
+            // Accumulate the number of folding (动力学模拟情况下: 折叠计数)
             aveNadim += param.nadim;
             int k = 0;
             if(!(particle_list[0].vx >= -1e8 && particle_list[0].vx <= 1e8)) {
@@ -1608,6 +1617,7 @@ int pf::Simulation::RANTERM() {
 }
 
 /**
+ * verlet: one sort of dynamics model
  * 分子动力学模拟算法
  */
 int pf::Simulation::verlet(double &enerkin, double &e_pot) {
@@ -1649,7 +1659,6 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot) {
              particle_list[i].fz + particle_list[i].frandz);
     }
 
-    // Calculate someother (TL: what it is?)
     for (int i = 0; i < param.npartM; i++) {
         particle_list[i].fxo = particle_list[i].fx;
         particle_list[i].fyo = particle_list[i].fy;
@@ -1661,7 +1670,7 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot) {
 
     // Calculate kinetic energy
     enerkin = 0.50 * enerkin * param.amass;
-    // TL: It seems that tempins is unused.
+    // It seems that tempins is unused.
     // double tempins = 2.0 * enerkin / (3.0 * param.npartM * param.boltz);
 
     // !  periodic boundary condiction is used based on the coordinate of 
@@ -1728,7 +1737,6 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot) {
     }                        
 
     // Write the intermediate results
-    // TL: If is the format right ?
     string msg = "nadim\tgQ_f\tgQ_b\tgQ_w\tE_k\tE_pot\tE_b\tE_bind]\teGr\tR\n";
     if (param.nadim == 0) log.info(output_filenames[9], msg);
     if (param.nadim == 0) cout << msg;
@@ -1825,7 +1833,6 @@ int pf::Simulation::output_conformation(int &nOutputGap, int &nOutputCount) {
             && param.gQ_f2 <= param.outQf2_f && param.gQ_b >= param.outQb_i
             && param.gQ_b <= param.outQb_f) {
         nOutputGap = 0;
-    }
 
         write_mol(nOutputCount);
         msg = log.format("%7d %13d %10.3f %10.3f %10.3f\n", nOutputCount,
@@ -1843,7 +1850,6 @@ int pf::Simulation::output_conformation(int &nOutputGap, int &nOutputCount) {
         log.info(output_filenames[26], " ");
         // write(*,'(''n='',i3,'', nadim='',i8,'', gQ='',f7.3, '',
         // old gQ='', 1i3)')nOutputCount,nadim,gQ,natcont
-        // TL: what's the mean of 1i3?
         // gQ and natcont don't define, so we define them as follos
         double gQ = 0.0;
         int natcont = 0;
@@ -1851,19 +1857,18 @@ int pf::Simulation::output_conformation(int &nOutputGap, int &nOutputCount) {
                 nOutputCount, param.nadim, gQ, natcont);
         cout << msg;
     }
+
+    return 0;
 }
 
 int pf::Simulation::write_mol(int &nOutputCount) {
     nOutputCount = nOutputCount + 1;
 
-    // TL: the following info should related to histogram, whether "\n" is necc
-    // TL: If is the format right ?
     string msg = log.format("Molecule-%7d\n", nOutputCount);
     log.info(output_filenames[22], msg);
     log.info(output_filenames[22],
             " ViewerPro         3D                             0\n");
 
-    // TL: If is the format right ?
 	if(param.iFlagMov == 1 || param.iFlagMov == 0) {
         msg = log.format("%3d %3d  0  0  0  0  0  0  0  0999 V2000\n",
                 param.npart1, param.npart1 - 1);
@@ -1873,7 +1878,6 @@ int pf::Simulation::write_mol(int &nOutputCount) {
     } 
     log.info(output_filenames[22], msg);
 
-    // TL: If is the format right ?
     for (int i = 0; i < param.npartM; i++) {
         msg = log.format("%10.4f %10.4f %10.4f C   0  0  0  0  0  0  0  0  \
                 0  0\n", particle_list[i].x, particle_list[i].y,
@@ -1886,7 +1890,6 @@ int pf::Simulation::write_mol(int &nOutputCount) {
             log.info(output_filenames[22], msg);
         }
     }
-    // TL: If is the format right ?
     log.info(output_filenames[22], "M  END\n");
 	log.info(output_filenames[22], "$$$$\n");
 
@@ -2065,6 +2068,7 @@ int pf::Simulation::write_histogram() {
 }
 
 /**
+ * conformation to coordinate system
  * 对体系进行对齐
  */
 int pf::Simulation::origin_adjust() {
@@ -2078,7 +2082,6 @@ int pf::Simulation::origin_adjust() {
     double xparticle[param.nparttol - param.npart1];
     for (int j = param.npart1 + 1; j <= param.nparttol; j++) {
         // xparticle[j] is never be used
-        // TL: the following computation is not balance
         x00 = x00 + xparticle[j];
         y00 = y00 + particle_list[j].y;
         z00 = z00 + particle_list[j].z;
@@ -2125,8 +2128,8 @@ int pf::Simulation::InitVel(double enerkin) {
                     + pow(particle_list[i].vz, 2));
     }
     enerkin =  0.5 * enerkin * param.amass;
-    // TL: tempins is unused.
-    double tempins = 2.0 * enerkin / (3.0 * param.npartM * param.boltz);
+    // tempins is unused.
+    // double tempins = 2.0 * enerkin / (3.0 * param.npartM * param.boltz);
     return 0;
 }
 
@@ -2143,9 +2146,10 @@ double pf::Simulation::gauss(double xsi) {
     return gauss;
 }
 
+// I directly move the body of this function into the rannyu()
 int pf::Simulation::rnyubd() {
     m[0] = 502, m[1] = 1521, m[2] = 4071, m[3] = 2107;
-    m[0] = 0, m[1] = 0, m[2] = 0, m[3] = 1;
+    l[0] = 0, l[1] = 0, l[2] = 0, l[3] = 1;
     return 0;
 }
 
@@ -2155,7 +2159,11 @@ double pf::Simulation::rannyu() {
     double ooto12 = 1.0 / 4096.0;
     double itwo12 = 4096;
     // Initialize m1-4 l1-4 in setrn() 
-    int m1 = 0, m2 = 0, m3 = 0, m4 = 0, l1 = 0, l2 = 0, l3 = 0, l4 = 0;
+    // int m1 = 0, m2 = 0, m3 = 0, m4 = 0, l1 = 0, l2 = 0, l3 = 0, l4 = 0;
+    //////////////////Body of rnyubd()/////////////////////
+    int m1 = 502, m2 = 1521, m3 = 4071, m4 = 2107;
+    int l1 = 0, l2 = 0, l3 = 0, l4 = 1;
+    ///////////////////////////////////////////////////////
     int i1 = l1 * m4 + l2 * m3 + l3 * m2 + l4 * m1;
     int i2 = l2 * m4 + l3 * m3 + l4 * m2;
     int i3 = l3 * m4 + l4 * m3;
@@ -2241,7 +2249,8 @@ int pf::Simulation::nativeinformation() {
     param.nQnative_f2 = 0;
     param.nQnative_b = 0;
 
-    // 标记两个残基之间是否有相互作用
+    // kunbond[i]: indicates whether exits interaction between tow residues
+    // (标记两个残基之间是否有相互作用)
     double xij, yij, zij;
     for (int k = 0; k < param.nunbond; k++) {
         int i = param.iun[k];
@@ -2253,7 +2262,6 @@ int pf::Simulation::nativeinformation() {
         zij = particle_list[i - 1].z - particle_list[j - 1].z;
         param.runbond_nat[k] = sqrt(pow(xij, 2) + pow(yij, 2) +
                 pow(zij, 2));
-        // TL: no word to describe
         if (param.kunbond[k] == 1) {
             if (i <= param.npart1 && j <= param.npart1) {
                 param.nQnative_f1 = param.nQnative_f1 + 1;
@@ -2265,7 +2273,7 @@ int pf::Simulation::nativeinformation() {
         }
     }
 
-    // bond length
+    // bond length (键长)
     for (int i = 0; i < param.nparttol - 1; i++) {
         int j = i + 1;
         xij = particle_list[j].x - particle_list[i].x;
@@ -2275,7 +2283,7 @@ int pf::Simulation::nativeinformation() {
                 pow(zij, 2));
     }
 
-    // 键角
+    // bond angle (键角)
     double xkj, ykj, zkj, rij, rkj, costheta;
     for (int i = 0; i < param.nparttol - 2; i++) {
         int j = i + 1;
@@ -2302,7 +2310,7 @@ int pf::Simulation::nativeinformation() {
         param.theta_nat[i] = acos(costheta);
     }
 
-    // 二面角
+    // dihedral angle (二面角)
     double xkl, ykl, zkl, rkl;
     for (int i = 0; i < param.nparttol - 3; i++) {
         int j = i + 1;
@@ -2341,7 +2349,10 @@ int pf::Simulation::nativeinformation() {
         double rmj=sqrt(pow(xmj, 2) + pow(ymj, 2) + pow(zmj, 2));
         if(pow(rnk, 2) < eps || pow(rmj, 2) < eps) break; 
 
-        double phi = acos(phi);
+        double phi = (xnk * xmj + ynk * ymj + znk * zmj) / (rnk * rmj);
+
+        phi = acos(phi);
+
         //fortran code: dihedral_nat(i)=sign(phi,xkj*xil+ykj*yil+zkj*zil)
         double tempval = xkj * xil + ykj * yil + zkj * zil;
         param.dihedral_nat[i] = tempval > 0 ? phi : (-1.0 * phi);
