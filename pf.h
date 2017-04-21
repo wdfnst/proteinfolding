@@ -22,10 +22,12 @@ namespace pf {
 // Const definition, which don't appear in configure file
 static const int MAXN = 430;
 static const int MAXUNBO = MAXN * (MAXN - 1) / 2;
+// 直方图区间数
 static const int nbinmax = 105;
 static const int nEbinmax = 105;
 static const int nRbinmax = 105;
 // TL: means and usages ? Whether are they all same in all functions?
+// 调整相互作用的强度参数
 static const double eps = 1.0e-3, eps1 = 1.0 - 1.0e-6, eps2 = 1.0e-4,
       epstht = 1.0-1.0e-12;
 
@@ -124,6 +126,11 @@ public:
            PQwEbbin[nbinmax][nEbinmax][2];
     double R;
     double gQ_non_f, gQ_non_b;
+    
+    // The following arrays keep unchanged after execute nativeinformation()
+    double rbond_nat[MAXN], runbond_nat[MAXUNBO], theta_nat[MAXN], \
+        dihedral_nat[MAXN];
+
 
 }; // end of class Parameter
 
@@ -158,17 +165,17 @@ public:
     double x, y, z;    
     double vx, vy, vz;
     double fx, fy, fz;
+    // *o: *old
     double fxo, fyo, fzo;
+    // *r, *th, *ph, *un: rbond, theta, phi, unbond
     double fxr, fyr, fzr;
     double fxth, fyth, fzth;
     double fxph, fyph, fzph;
     double fxun, fyun, fzun;
+    // *rand*: 布朗运动产生的随机力
     double frandx, frandy, frandz;
     double frandxo, frandyo, frandzo;
     int intpar(double enerkin);
-    // TODO: runbond_nat's size is not MAXN - 1, because MAXUNBO = ***
-    // TL: the size of runbond_nat
-    double rbond_nat, runbond_nat[MAXN - 1], theta_nat, dihedral_nat;
 
 }; // end of class Particle
 

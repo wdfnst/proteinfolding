@@ -285,10 +285,10 @@ double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot) {
 
         if (rij < eps1) break;
 
-        double e_bond = param.ck_r * pow((rij - particle_list[i].rbond_nat), 2);
+        double e_bond = param.ck_r * pow(rij - param.rbond_nat[i], 2);
         e_bond_tot += e_bond;
-        double e_bond_drv = -2 * param.ck_r * (rij -
-                particle_list[i].rbond_nat);
+        double e_bond_drv =
+            -2 * param.ck_r * (rij - param.rbond_nat[i]);
         double drix = xij / rij;
         double driy = yij / rij;
         double driz = zij / rij;
@@ -332,7 +332,7 @@ double pf::Force::fbend(vector<Particle> &particle_list, double &e_bend_tot) {
         }
 
         double theta = acos(costheta);
-        double delta = theta - particle_list[i].theta_nat;
+        double delta = theta - param.theta_nat[i];
         
 
         double tem = 0.0;
@@ -345,7 +345,7 @@ double pf::Force::fbend(vector<Particle> &particle_list, double &e_bend_tot) {
         double e_bend = tem * param.ck_tht * pow(delta, 2);
         double e_bend_drv = -1 * tem * 2 * param.ck_tht * delta;
 
-        e_bend_tot = e_bend_tot + e_bend;
+        e_bend_tot += e_bend;
         double sintinv = 1.0 / sin(theta);
 
         double drix = sintinv * (costheta * xij / rij - xkj / rkj) / rij;
@@ -378,7 +378,7 @@ double pf::Force::ftorsion(vector<Particle> &particle_list,
         double &e_tors_tot) {
     for (int i = 0; i < param.npartM - 3; i++) {
         int j = i + 1;
-        int k = i = 2;
+        int k = i + 2;
         int l = i + 3;
         
         double xij = particle_list[i].x - particle_list[j].x;
@@ -448,7 +448,7 @@ double pf::Force::ftorsion(vector<Particle> &particle_list,
         phi = acos(phi);
         double tmpvalue = xkj * xil + ykj * yil + zkj * zil; 
         phi = tmpvalue > 0 ? phi : (-1 * phi);
-        double phi_0 = particle_list[i].dihedral_nat;
+        double phi_0 = param.dihedral_nat[i];
 
 
         double e_tors = param.ck_phi1 * (1.0 - cos(phi - phi_0)) +
@@ -521,14 +521,437 @@ double pf::Force::funbond(vector<Particle> &particle_list, double &e_unbond_tot,
     return 0;
 }
 
+/**
+ * Solve unbond force with solvent
+ */
 double pf::Force::funbond_with(vector<Particle> &particle_list,
         double &e_unbond_tot, double &e_bind_tot) {
+    param.gQ_f     = 0.0;
+    param.gQ_f1    = 0.0;
+    param.gQ_f2    = 0.0;
+    param.gQ_b     = 0.0;
+    param.gQ_w     = 0.0;
+    double sum_rij = 0.0;
+    param.gQ_non_f = 0.0;
+    param.gQ_non_b = 0.0;
+
+    // !     r''-r'
+    param.dr_sol = 3.0;
+    // !     r*-r'
+    param.ddr_sol = 1.5;
+
+    double xij = 0.0;
+    double yij = 0.0;
+    double zij = 0.0;
+    double rij = 0.0;
+    double tem = 0.0;
+    // !  unbonded force for A:      
+    for (int k = 0; k < param.nunbond; k++) {
+        int i = param.iun[k];
+        int j = param.jun[k];
+        
+        double e_unbond = 0;
+        double e_unbond_drv = 0;
+
+        xij = (particle_list[i].x - particle_list[j].x);      
+        yij = (particle_list[i].y - particle_list[j].y);      
+        zij = (particle_list[i].z - particle_list[j].z);      
+
+        rij = sqrt(pow(xij, 2) + pow(yij, 2) + pow(zij, 2));
+
+        if ((param.kunbond[k] == 2 && rij >= (2 * param.CritR_non + 3.0))
+                || (param.kunbond[k] == 0 && rij >= (1.8 * param.sigma_ij))
+                || (i > param.npartM && j > param.npartM)) continue;
+
+        if (param.kunbond[k] == 1) {
+            if (rij / param.kunbond[k] - param.gr0 < 8 * param.gdr) { 
+                tem = 1 / (1 + exp((rij / (param.runbond_nat[k] +
+                                    param.ddr_sol) - param.gr0) / param.gdr));
+                if (i <= param.npart1 && j > param.npart1) {
+                    param.gQ_f1 += tem;
+                } else if (i <= param.npart1 && j > param.npart1) {
+                    param.gQ_b += tem;
+                } else if (param.iFlagMov == 2){
+                    param.gQ_f2 += tem;
+                }
+            }
+            if (i == param.npart1 && j == param.npart1) {
+                sum_rij += (rij - param.runbond_nat[k]);
+            }
+
+            if (rij < param.runbond_nat[k]) {
+                double Zr = pow((param.runbond_nat[k] / rij), param.k_sol);
+                double dZr = -param.k_sol * Zr / rij;
+                e_unbond = param.epsil1 * Zr * (Zr - 2.0);
+                e_unbond_drv = param.epsil1 * 2 * (Zr - 1) * dZr;
+            } else if (rij < param.runbond_nat[k] + param.ddr_sol) {
+                double Yr = pow((rij - (param.runbond_nat[k] + param.ddr_sol)),
+                        2);
+                double Yrn = pow(Yr, param.n_sol);
+                double dYr = 2 * (rij - (param.runbond_nat[k] + param.ddr_sol));
+                double dr2n = pow(param.ddr_sol, (2 * param.n_sol));
+                // !  Note that C should be .../(r*-r')^4n
+                double CC = 4 * param.n_sol * (param.epsil1
+                        + param.epsilon_pp) / pow(dr2n, 2);
+                e_unbond = CC * Yrn * (0.5 * Yrn - dr2n) / (2 * param.n_sol) +
+                    param.epsilon_pp;
+                e_unbond_drv = CC / (2 * param.n_sol) * (Yrn - dr2n) *
+                    (param.n_sol * Yrn / Yr) * dYr;
+            } else {
+                double Yr = pow((rij - (param.runbond_nat[k] + param.ddr_sol)),
+                        2);
+                double dYr = 2 * (rij - (param.runbond_nat[k] + param.ddr_sol));
+                double ddr = param.dr_sol - param.ddr_sol;
+                double BB = param.epsilon_p * param.m_sol * pow(ddr,
+                        (2 * (param.m_sol - 1)));
+                double h1 = (1 - 1.0 / param.m_sol) * pow(ddr, 2) /
+                    (param.epsilon_p / param.epsilon_pp + 1.0);
+                double h2 = (param.m_sol - 1) * pow(ddr, (2 * param.m_sol)) /
+                    (1.0 + param.epsilon_pp / param.epsilon_p);
+                e_unbond = -BB * (Yr - h1) / (pow(Yr, param.m_sol) + h2);
+                e_unbond_drv = -BB * dYr / (pow(Yr, param.m_sol) + h2) +
+                    BB * (Yr - h1) / pow((pow(Yr, param.m_sol) + h2), 2) *
+                    param.m_sol * pow(Yr, (param.m_sol - 1)) * dYr;
+            }
+            e_unbond_drv = -e_unbond_drv;
+
+            if(i <= param.npart1 && j <= param.npart1) { 
+                e_unbond = param.Alpha1 * e_unbond;
+                e_unbond_drv = param.Alpha1 * e_unbond_drv;
+            }
+            else if(i <= param.npart1 && j > param.npart1) { 
+                e_unbond = param.Beta * e_unbond;
+                e_unbond_drv = param.Beta * e_unbond_drv;
+            }
+            else if(param.iFlagMov == 2) {
+                e_unbond = param.Alpha2 * e_unbond;
+                e_unbond_drv = param.Alpha2 * e_unbond_drv;
+            }
+        } else if (param.kunbond[k] == 2) {
+            if((rij / param.CritR_non - param.gr0) <= 8 * param.gdr) { 
+                tem = 1 / (1 +
+                        exp((rij / param.CritR_non - param.gr0) / param.gdr));
+                if(i <= param.npart1 && j > param.npart1) { 
+                    param.gQ_non_b = param.gQ_non_b + tem;
+                } else if (param.iFlagMov == 2 || j <= param.npart1) { 
+                    param.gQ_non_f = param.gQ_non_f + tem;
+                } 
+            }
+            double rij12 = pow((param.sigma_ij / rij), 12.0);
+            double rHP = exp(-1 * pow((rij - param.CritR_non), 2) / 2);
+            double Atem = 0.0;
+            if(i <= param.npart1 && j <= param.npart1) { 
+                Atem = param.Alpha1;
+            }
+            else if(i <= param.npart1 && j > param.npart1) { 
+                // ! Atem = sqrt(Alpha1*Alpha2)
+                Atem = param.Beta;
+            }
+            else {
+                Atem = param.Alpha2;
+            }
+            e_unbond = Atem * param.epsil2 * rij12 - param.Delta *
+                param.epsil1 * rHP;
+            e_unbond_drv = Atem * 12 * param.epsil2 * rij12 / rij -
+                param.Delta * param.epsil1 * rHP * (rij - param.CritR_non);
+        } else {
+            double rij12 = pow((param.sigma_ij / rij), 12.0);
+            double Atem = 0.0;
+            if(i <= param.npart1 && j <= param.npart1) { 
+                Atem = param.Alpha1;
+            }
+            else if (i <= param.npart1 && j > param.npart1) { 
+                // ! Atem = sqrt(Alpha1*Alpha2)
+                Atem = param.Beta;
+            }
+            else {
+                Atem = param.Alpha2;
+            }
+            e_unbond = Atem * param.epsil2 * rij12;
+            e_unbond_drv = Atem * 12 * param.epsil2 * rij12 / rij;
+        }
+
+        e_unbond_tot += e_unbond;
+        if(i <= param.npart1 && j > param.npart1) e_bind_tot += e_unbond;
+          
+        if(i <= param.npartM) { 
+            particle_list[i].fxun += e_unbond_drv * xij / rij;
+            particle_list[i].fyun += e_unbond_drv * yij / rij;
+            particle_list[i].fzun += e_unbond_drv * zij / rij;
+        }
+        if(j <= param.npartM) { 
+          particle_list[j].fxun -= e_unbond_drv * xij / rij;
+          particle_list[j].fyun -= e_unbond_drv * yij / rij;
+          particle_list[j].fzun -= e_unbond_drv * zij / rij;
+        }
+    } // fortran code: 40 continue
+
+    if (param.iFlagMov != 2) param.gQ_f2 = 0;
+    param.gQ_f = param.gQ_f1 + param.gQ_f2;
+
+    // !  Lagrange constrant potential: 
+    // !  Fixed B
+    double eGr_f1 = param.ga1_f1 * (param.gQ_f1 - param.gQ0_f1) +
+        param.ga2_f1 * pow(param.gQ_f1 - param.gQ0_f1, 2);
+    double eGr_f2 = param.ga1_f2 * (param.gQ_f2 - param.gQ0_f2) +
+        param.ga2_f2 * pow(param.gQ_f2 - param.gQ0_f2, 2);
+    double eGr_b = param.ga1_b * (param.gQ_b - param.gQ0_b ) +
+        param.ga2_b * pow(param.gQ_b - param.gQ0_b, 2);
+    double eGr_f = eGr_f1 + eGr_f2;
+    double eGr_w = param.ga1_w * (param.gQ_w - param.gQ0_w ) +
+        param.ga2_w * pow(param.gQ_w - param.gQ0_w, 2);
+    double eGr = eGr_f + eGr_b + eGr_w;
+
+    if (eGr < 1e-5 && eGr > -1e-5) return 0; 
+
+    for (int k = 0; k < param.nunbond; k++) {
+        int i = param.iun[k];
+        int j = param.jun[k];
+
+        double e_unbond_drv = 0;
+        
+        if (param.kunbond[k] == 1) {
+            e_unbond_drv = param.ga1_f1 + 2 * param.ga2_f1 * (param.gQ_f1 -
+                    param.gQ0_f1);
+        } else if(i <= param.npart1 && j > param.npart1) { 
+          e_unbond_drv = param.ga1_b + 2 * param.ga2_b *
+              (param.gQ_b - param.gQ0_b ) + param.ga1_w +
+              2 * param.ga2_w * (param.gQ_w - param.gQ0_w);
+        } else {
+            e_unbond_drv = param.ga1_f2 + 2 * param.ga2_f2 * (param.gQ_f2 -
+                    param.gQ0_f2);
+        }
+
+        if ((rij / (param.runbond_nat[k] + param.ddr_sol) - param.gr0) <
+                -8 * param.gdr || (rij / (param.runbond_nat[k] + param.ddr_sol)
+                    - param.gr0) > 8 * param.gdr) { 
+            e_unbond_drv = 0.0;
+        } else {
+            tem = exp((rij / (param.runbond_nat[k] + param.ddr_sol) - param.gr0)
+                    / param.gdr);
+            e_unbond_drv = e_unbond_drv * tem / pow(1 + tem, 2) /
+                ((param.runbond_nat[k] + param.ddr_sol) * param.gdr);
+        }
+
+        if (i <- param.npartM) { 
+            particle_list[i].fxun += e_unbond_drv * xij / rij;
+            particle_list[i].fyun += e_unbond_drv * yij / rij;
+            particle_list[i].fzun += e_unbond_drv * zij / rij;
+        }
+        if (j <= param.npartM) { 
+            particle_list[j].fxun -= e_unbond_drv * xij / rij;
+            particle_list[j].fyun -= e_unbond_drv * yij / rij;
+            particle_list[j].fzun -= e_unbond_drv * zij / rij;
+        }
+    }
 
     return 0;
 }
 
+/**
+ * Solve unbond force without solvent
+ */
 double pf::Force::funbond_without(vector<Particle> &particle_list,
         double &e_unbond_tot, double &e_bind_tot) {
+    param.gQ_f     = 0.0;
+    param.gQ_f1    = 0.0;
+    param.gQ_f2    = 0.0;
+    param.gQ_b     = 0.0;
+    param.gQ_w     = 0.0;
+    double sum_rij = 0.0;
+    param.gQ_non_f = 0.0;
+    param.gQ_non_b = 0.0;
+
+    // !     r''-r'
+    param.dr_sol = 3.0;
+    // !     r*-r'
+    param.ddr_sol = 1.5;
+
+    // Some temporary variables
+    double xij = 0.0;
+    double yij = 0.0;
+    double zij = 0.0;
+    double rij = 0.0;
+    double tem = 0.0;
+    double e_unbond = 0;
+    double e_unbond_drv = 0;
+    // !  unbonded force for A:      
+    for (int k = 0; k < param.nunbond; k++) {
+        int i = param.iun[k];
+        int j = param.jun[k];
+
+        xij = (particle_list[i].x - particle_list[j].x);      
+        yij = (particle_list[i].y - particle_list[j].y);      
+        zij = (particle_list[i].z - particle_list[j].z);      
+
+        // ! cancel for Q_w
+        // !      if ( kunbond(k) == 1 .and. rij >= (2*runbond_nat(k)+3.0) .or. &
+        if ((param.kunbond[k] == 2 && rij >= (2 * param.CritR_non + 3.0))
+                || (param.kunbond[k] == 0 && rij >= (1.8 * param.sigma_ij))
+                || (i > param.npartM && j > param.npartM)) continue;
+        
+        if (param.kunbond[k] == 1) { 
+            if((rij / param.runbond_nat[k] - param.gr0) < 8 * param.gdr) { 
+                tem = 1 / (1 + exp((rij / param.runbond_nat[k] - param.gr0) /
+                            param.gdr));
+                if (i <= param.npart1 && j <= param.npart1) { 
+                    param.gQ_f1 += tem;
+                } else if (i <= param.npart1 && j > param.npart1) { 
+                    param.gQ_b += tem;
+                } else if (param.iFlagMov == 2) { 
+                    param.gQ_f2 += tem;
+                }
+            } 
+            if(i <= param.npart1 && j > param.npart1) {
+                sum_rij += (rij - param.runbond_nat[k]);
+            }
+            double rij10 = pow((param.runbond_nat[k] / rij), 10.0);
+            double rij12 = pow((param.runbond_nat[k] / rij), 12.00);
+            if (i <= param.npart1 && j <= param.npart1) { 
+                e_unbond = param.Alpha1 * param.epsil1 * (5 * rij12 -
+                        6 * rij10);
+                e_unbond_drv = param.Alpha1 * 60 * param.epsil1 * (rij12 -
+                        rij10) / rij;
+            }
+            else if (i <= param.npart1 && j > param.npart1) { 
+                e_unbond = param.Beta * param.epsil1 * (5 * rij12 - 6 * rij10);
+                e_unbond_drv = param.Beta * 60 * param.epsil1 * (rij12 -
+                        rij10) / rij;
+            }
+            else if (param.iFlagMov == 2) { 
+                e_unbond = param.Alpha2 * param.epsil1 * ( 5 * rij12 -
+                        6 * rij10 );
+                e_unbond_drv = param.Alpha2 * 60 * param.epsil1 * ( rij12 -
+                        rij10 ) / rij;
+            }
+        } else if (param.kunbond[k] == 2) {
+            if ((rij / param.CritR_non - param.gr0) < 8 * param.gdr) { 
+                tem = 1 / (1 + exp((rij / param.CritR_non - param.gr0) /
+                            param.gdr));
+                if (i <= param.npart1 && j > param.npart1) { 
+                    param.gQ_non_b += tem;
+                }
+                else if (param.iFlagMov == 2 || j <= param.npart1) { 
+                    param.gQ_non_f += tem;
+                }
+            }
+
+            double rij12 = pow(param.sigma_ij / rij, 12.0);
+            double rHP  = exp(-1 * pow(rij - param.CritR_non, 2) / 2); 
+            double Atem = 0.0;
+            if (i <= param.npart1 && j <= param.npart1) { 
+                Atem = param.Alpha1;
+            } else if (i <= param.npart1 && j > param.npart1) { 
+                // ! Atem = sqrt(Alpha1*Alpha2)
+                Atem = param.Beta;
+            } else {
+               Atem = param.Alpha2;
+            }
+            e_unbond = Atem * param.epsil2 * rij12 - param.Delta *
+                param.epsil1 * rHP;
+            e_unbond_drv = Atem * 12 * param.epsil2 * rij12 / rij -
+                param.Delta * param.epsil1 * rHP * (rij - param.CritR_non);    
+        } else {
+            double rij12 = pow(param.sigma_ij / rij, 12.0);
+            double Atem = 0.0;
+            if (i <= param.npart1 && j <= param.npart1) { 
+                Atem = param.Alpha1;
+            } else if (i <= param.npart1 && j > param.npart1) { 
+                // ! Atem = sqrt(Alpha1*Alpha2)
+                Atem = param.Beta;
+            } else {
+                Atem = param.Alpha2;
+            }
+            e_unbond = Atem * param.epsil2 * rij12;
+            e_unbond_drv = Atem * 12 * param.epsil2 * rij12 / rij;
+        }
+
+        e_unbond_tot += e_unbond;
+        if (i <= param.npart1 && j > param.npart1) e_bind_tot += e_unbond;
+
+        if (i <= param.npartM) { 
+            particle_list[i].fxun += e_unbond_drv * xij / rij;
+            particle_list[i].fyun += e_unbond_drv * yij / rij;
+            particle_list[i].fzun += e_unbond_drv * zij / rij;
+        }
+        if (j <= param.npartM) { 
+            particle_list[j].fxun -= e_unbond_drv * xij / rij;
+            particle_list[j].fyun -= e_unbond_drv * yij / rij;
+            particle_list[j].fzun -= e_unbond_drv * zij / rij;
+        }
+    } // fortran code: 40 continue
+
+    if (param.iFlagMov != 2) param.gQ_f2 = 0;
+    param.gQ_f = param.gQ_f1 + param.gQ_f2;
+
+    // !  Lagrange constrant potential: 
+    // !  Fixed B
+    double gQ_w = param.gQ_b - param.alpha_Qw * sum_rij;
+    double eGr_f1 = param.ga1_f1 * (param.gQ_f1 - param.gQ0_f1) +
+        param.ga2_f1 * pow(param.gQ_f1 - param.gQ0_f1, 2);
+    double eGr_f2 = param.ga1_f2 * (param.gQ_f2 - param.gQ0_f2 ) +
+        param.ga2_f2 * pow(param.gQ_f2 - param.gQ0_f2, 2);
+    double eGr_b = param.ga1_b * (param.gQ_b - param.gQ0_b ) +
+        param.ga2_b * pow(param.gQ_b - param.gQ0_b, 2);
+    double eGr_f = eGr_f1 + eGr_f2;
+    double eGr_w = param.ga1_w * (param.gQ_w - param.gQ0_w ) +
+        param.ga2_w * pow(param.gQ_w - param.gQ0_w, 2);
+    double eGr = eGr_f + eGr_b + eGr_w;
+
+    if(param.eGr < 1e-5 && param.eGr > -1e-5) return 0;
+
+    for (int k = 0; k < param.nunbond; k++) {
+        int i = param.iun[k];
+        int j = param.jun[k];
+
+        e_unbond_drv = 0;
+        if (param.kunbond[k] == 1) { 
+            xij = particle_list[i].x - particle_list[j].x;
+            yij = particle_list[i].y - particle_list[j].y;
+            zij = particle_list[i].z - particle_list[j].z;
+            rij = sqrt(pow(xij, 2) + pow(yij, 2) + pow(zij, 2));
+
+            if (i <= param.npart1 && j <= param.npart1) { 
+                e_unbond_drv = param.ga1_f1 + 2 * param.ga2_f1 * (param.gQ_f1 -
+                        param.gQ0_f1);
+            }
+            else if(i <= param.npart1 && j > param.npart1) { 
+                e_unbond_drv = param.ga1_b + 2 * param.ga2_b *
+                    (param.gQ_b - param.gQ0_b ) + param.ga1_w +
+                    2 * param.ga2_w * (param.gQ_w - param.gQ0_w);
+            } else {
+                e_unbond_drv = param.ga1_f2 + 2 * param.ga2_f2 * (param.gQ_f2 -
+                        param.gQ0_f2);
+            }
+
+            if ((rij / (param.runbond_nat[k] + param.ddr_sol) - param.gr0) <
+                    -8 * param.gdr || (rij / (param.runbond_nat[k] +
+                            param.ddr_sol) - param.gr0) > 8 * param.gdr) { 
+                e_unbond_drv = 0.0;
+            } else {
+                tem = exp((rij / (param.runbond_nat[k] + param.ddr_sol) -
+                            param.gr0) / param.gdr);
+                e_unbond_drv = e_unbond_drv * tem / pow(1 + tem, 2) /
+                    ((param.runbond_nat[k] + param.ddr_sol) * param.gdr);
+            } 
+
+            if (i <= param.npart1 && j > param.npart1) { 
+                e_unbond_drv = e_unbond_drv + param.alpha_Qw * (param.ga1_w +
+                        2 * param.ga2_w * (param.gQ_w - param.gQ0_w));
+            }
+
+            if (i <= param.npartM) { 
+                particle_list[i].fxun += e_unbond_drv * xij / rij;
+                particle_list[i].fyun += e_unbond_drv * yij / rij;
+                particle_list[i].fzun += e_unbond_drv * zij / rij;
+            }
+            if (j <= param.npartM) { 
+                particle_list[j].fxun -= e_unbond_drv * xij / rij;
+                particle_list[j].fyun -= e_unbond_drv * yij / rij;
+                particle_list[j].fzun -= e_unbond_drv * zij / rij;
+            } 
+        }
+    }
 
     return 0;
 }
@@ -554,6 +977,7 @@ int pf::Simulation::intpar(double enerkin) {
     param.dt = param.s_dt * timeunit;
     param.gm = param.s_gm / timeunit;
 
+    // c_* 拟合参数
     param.c_0 = param.dt * param.gm / (2.0 * param.amass);
     param.c_1 = (1.0 - param.c_0) * (1.0 - param.c_0 + pow(param.c_0, 2));
     param.c_2 = (param.dt / (2 * param.amass)) * 
@@ -855,7 +1279,9 @@ int pf::Simulation::output_info() {
     return 0;
 }
 
-/** Read particles from file
+/**
+ * BUG: initial conformation file may store multiple inital conformation
+ * Read particles from file
  */
 int pf::Simulation::read_nativeconform(string filename) {
     fstream fin(filename, std::ifstream::in);
@@ -885,7 +1311,7 @@ int pf::Simulation::read_appNCS(string filename) {
     // Repeatedly read the initial coordinates of particle
     string skip_others;
     // fortran code: nunbond=0. (TL: I guess: unbond is similar to the indexi.)
-    int nunbond = 0;
+    param.nunbond = 0;
     for (int i = 0; i < MAXUNBO; i++) {
         int item1, item2, item3;
         fin >> item1 >> item2 >> item3;
@@ -909,27 +1335,27 @@ int pf::Simulation::read_appNCS(string filename) {
         }
         if (item1 == item2) cerr << "contact map error 3.\n";
         // fortran code: nunbond=nunbond+1
-        nunbond += 1;
+        param.nunbond += 1;
         if (item1 < item2) {
-            param.iun[nunbond] = item1;
-            param.jun[nunbond] = item2;
+            param.iun[param.nunbond] = item1;
+            param.jun[param.nunbond] = item2;
         } else {
-            param.iun[nunbond] = item2;
-            param.jun[nunbond] = item1;
+            param.iun[param.nunbond] = item2;
+            param.jun[param.nunbond] = item1;
         }
-        param.kunbond[nunbond] = item3;
+        param.kunbond[param.nunbond] = item3;
         // BUG: I can't understand the logical relationship
         if ((item1 > param.npartM && item2 > param.npartM) || 
                 (param.iFlagMov == 0 && 
                  (item1 > param.npart1 || item2 > param.npart1))) {
-            nunbond -= 1;
+            param.nunbond -= 1;
         }
 
         // Skip the last string
         getline(fin, skip_others);
     }
-    cout << setw(50) << "Effective Number of unbond:" << nunbond << endl;
-    return nunbond;
+    cout << setw(50) << "Effective Number of unbond:" << param.nunbond << endl;
+    return param.nunbond;
 }
 
 /**
@@ -987,8 +1413,10 @@ int pf::Simulation::start_simulation() {
     intpar(enerkin);
 
     // !  total number of folding/unfolding events
+    // 动力学模拟时，才有意义；热力学模拟无意义
     int nFoldTol   = 0;
     int nunFoldTol = 0;
+    // 发生折叠或解折叠的平均步数
     int aveNadim   = 0;
 
     read_initalconform(param.initialconform_filename);
@@ -1008,6 +1436,7 @@ int pf::Simulation::start_simulation() {
         read_initalconform(param.initialconform_filename);
     
         // Copy from fortran code, TL: means?
+        // 对得到的所有轨迹进行统计：发生/未发生的百分比
         int nFoldSub = 0;
         int nunFoldSub = 0;
 
@@ -1048,9 +1477,11 @@ int pf::Simulation::start_simulation() {
 
             // Copy from fortran code, TL: means?
             nOutputCount = 0;
+            // 控制在哪一步进行输出
             int nOutputGap = -1;
-            param.nadim = -1; // fortran code: nadim=-1
 
+            // 下面循环计数
+            param.nadim = -1; // fortran code: nadim=-1
             // ! main dynamics cycle
             // fortran code: do 100 nadim_new=0,nstep
             for (int j = 0; j < param.nstep; j++) {
@@ -1089,7 +1520,7 @@ int pf::Simulation::start_simulation() {
                     InitVel(enerkin);
                     force.force(particle_list, e_pot, e_unbond_tot, e_bind_tot,
                             e_tors_tot, e_bend_tot, e_bond_tot);
-                    // TL: usage?
+                    // Related to Randon number generator 
                     RANTERM();
 
                     for (int kl = 0; kl < param.npartM; kl++) {
@@ -1121,6 +1552,7 @@ int pf::Simulation::start_simulation() {
                 }
             } // fortran code: 100 continue
 
+            // 动力学模拟情况下: 折叠计数
             aveNadim += param.nadim;
             int k = 0;
             if(!(particle_list[0].vx >= -1e8 && particle_list[0].vx <= 1e8)) {
@@ -1175,6 +1607,9 @@ int pf::Simulation::RANTERM() {
     return 0;
 }
 
+/**
+ * 分子动力学模拟算法
+ */
 int pf::Simulation::verlet(double &enerkin, double &e_pot) {
     enerkin = 0.0;
     RANTERM();
@@ -1390,6 +1825,7 @@ int pf::Simulation::output_conformation(int &nOutputGap, int &nOutputCount) {
             && param.gQ_f2 <= param.outQf2_f && param.gQ_b >= param.outQb_i
             && param.gQ_b <= param.outQb_f) {
         nOutputGap = 0;
+    }
 
         write_mol(nOutputCount);
         msg = log.format("%7d %13d %10.3f %10.3f %10.3f\n", nOutputCount,
@@ -1457,6 +1893,7 @@ int pf::Simulation::write_mol(int &nOutputCount) {
     return 0;
 }
 
+// Viewer software: Pymol
 int pf::Simulation::write_target(int &nOutputCount) {
     nOutputCount += 1;
 	string msg = log.format("Molecule-%7d\n", nOutputCount);
@@ -1627,6 +2064,9 @@ int pf::Simulation::write_histogram() {
     return 0;
 }
 
+/**
+ * 对体系进行对齐
+ */
 int pf::Simulation::origin_adjust() {
     if (param.nparttol - param.npart1 <= 0) return 0; 
 
@@ -1714,6 +2154,7 @@ double pf::Simulation::rannyu() {
     // TL: Is there any relationship between m/l(4) with m/l1-4?
     double ooto12 = 1.0 / 4096.0;
     double itwo12 = 4096;
+    // Initialize m1-4 l1-4 in setrn() 
     int m1 = 0, m2 = 0, m3 = 0, m4 = 0, l1 = 0, l2 = 0, l3 = 0, l4 = 0;
     int i1 = l1 * m4 + l2 * m3 + l3 * m2 + l4 * m1;
     int i2 = l2 * m4 + l3 * m3 + l4 * m2;
@@ -1800,6 +2241,7 @@ int pf::Simulation::nativeinformation() {
     param.nQnative_f2 = 0;
     param.nQnative_b = 0;
 
+    // 标记两个残基之间是否有相互作用
     double xij, yij, zij;
     for (int k = 0; k < param.nunbond; k++) {
         int i = param.iun[k];
@@ -1809,7 +2251,7 @@ int pf::Simulation::nativeinformation() {
         xij = particle_list[i - 1].x - particle_list[j - 1].x;
         yij = particle_list[i - 1].y - particle_list[j - 1].y;
         zij = particle_list[i - 1].z - particle_list[j - 1].z;
-        particle_list[k].runbond_nat = sqrt(pow(xij, 2) + pow(yij, 2) +
+        param.runbond_nat[k] = sqrt(pow(xij, 2) + pow(yij, 2) +
                 pow(zij, 2));
         // TL: no word to describe
         if (param.kunbond[k] == 1) {
@@ -1823,15 +2265,17 @@ int pf::Simulation::nativeinformation() {
         }
     }
 
+    // bond length
     for (int i = 0; i < param.nparttol - 1; i++) {
         int j = i + 1;
         xij = particle_list[j].x - particle_list[i].x;
         yij = particle_list[j].y - particle_list[i].y;
         zij = particle_list[j].z - particle_list[i].z;
-        particle_list[i].rbond_nat = sqrt(pow(xij, 2) + pow(yij, 2) +
+        param.rbond_nat[i] = sqrt(pow(xij, 2) + pow(yij, 2) +
                 pow(zij, 2));
     }
 
+    // 键角
     double xkj, ykj, zkj, rij, rkj, costheta;
     for (int i = 0; i < param.nparttol - 2; i++) {
         int j = i + 1;
@@ -1855,9 +2299,10 @@ int pf::Simulation::nativeinformation() {
             costheta = costheta > 0 ? epstht : (-1 * epstht);
         }
 
-        particle_list[i].theta_nat = acos(costheta);
+        param.theta_nat[i] = acos(costheta);
     }
 
+    // 二面角
     double xkl, ykl, zkl, rkl;
     for (int i = 0; i < param.nparttol - 3; i++) {
         int j = i + 1;
@@ -1899,7 +2344,7 @@ int pf::Simulation::nativeinformation() {
         double phi = acos(phi);
         //fortran code: dihedral_nat(i)=sign(phi,xkj*xil+ykj*yil+zkj*zil)
         double tempval = xkj * xil + ykj * yil + zkj * zil;
-        particle_list[i].dihedral_nat = tempval > 0 ? phi : (-1.0 * phi);
+        param.dihedral_nat[i] = tempval > 0 ? phi : (-1.0 * phi);
     }
          
     return 0;
