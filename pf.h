@@ -40,6 +40,17 @@ public:
     string format(const char* fmt, ...);
 };
 
+class statistics {
+public:
+    double PFBbin[nbinmax][nbinmax], PFbin[nbinmax], PBbin[nbinmax];
+    double PFBEbin[nbinmax][nbinmax][nEbinmax];
+    double PQbEbbin[nbinmax][nEbinmax];
+    double PFBRbin[nbinmax][nbinmax][nRbinmax];
+    double PFFBbin[nbinmax][nbinmax][nbinmax];
+    double PQwbin[nbinmax], PQwQbbin[nbinmax][nbinmax],
+           PQwQfbin[nbinmax][nbinmax], PQwRbin[nbinmax][nRbinmax][2],
+           PQwEbbin[nbinmax][nEbinmax][2];
+} statis;
 /* Class Parameter for maintaining parameters
  * main functions: Parameter(), Parse()
  * main members: parameters enumerating in input.***.test.dat
@@ -111,22 +122,10 @@ public:
     double gQ_f, gQ_f1, gQ_f2, gQ_b, eGr;
     double gQ_w;
     double iQb_i, iQb_f;
-
     double pseudoQ_f, pseudoQ_b, dr_sol, ddr_sol;
-
-    // Used to store statistical samples
-    double PFBbin[nbinmax][nbinmax], PFbin[nbinmax], PBbin[nbinmax];
-    double PFBEbin[nbinmax][nbinmax][nEbinmax];
-    double PQbEbbin[nbinmax][nEbinmax];
-    double PFBRbin[nbinmax][nbinmax][nRbinmax];
-    double PFFBbin[nbinmax][nbinmax][nbinmax];
-    double PQwbin[nbinmax], PQwQbbin[nbinmax][nbinmax], 
-           PQwQfbin[nbinmax][nbinmax], PQwRbin[nbinmax][nRbinmax][2],
-           PQwEbbin[nbinmax][nEbinmax][2];
-
     double R;
     double gQ_non_f, gQ_non_b;
-    
+
     // bond length, non-bond length, bond angle, dihedral angle
     // (键长/键角/二面角和非键距离)
     // Arrays keep unchanged after execute nativeinformation()
@@ -162,7 +161,7 @@ public:
     // common/forcerandold/frandxo(MAXN),frandyo(MAXN),frandzo(MAXN)
     // common/nativeinfo/rbond_nat(MAXN),runbond_nat(MAXUNBO),theta_nat(MAXN),
     // dihedral_nat(MAXN)
-    double x, y, z;    
+    double x, y, z;
     double vx, vy, vz;
     double fx, fy, fz;
     // *o: *old, for the f_{k + 1} = f_{k} + f_{k - 1}
@@ -175,7 +174,6 @@ public:
     // *rand*: force by Brownian Motion (布朗运动产生的随机力)
     double frandx, frandy, frandz;
     double frandxo, frandyo, frandzo;
-    int intpar(double enerkin);
 
 }; // end of class Particle
 
@@ -183,10 +181,9 @@ public:
  * main functions: Force(), e_bond_tot()
  */
 class Force {
-    
+
 public:
     // composite force
-    Force();
     Force(Parameter &param);
 
     int force(vector<Particle> &particle_list, double &e_pot,
@@ -196,16 +193,16 @@ public:
     double fbond(vector<Particle> &particle_list, double &e_bond_tot);
     double fbend(vector<Particle> &particle_list, double &e_bend_tot);
     double ftorsion(vector<Particle> &particle_list, double &e_tors_tot);
-    double funbond(vector<Particle> &particle_list, double &e_unbond_tot, 
+    double funbond(vector<Particle> &particle_list, double &e_unbond_tot,
             double &e_bind_tot);
 
-    double funbond_with(vector<Particle> &particle_list, double &e_unbond_tot, 
+    double funbond_with(vector<Particle> &particle_list, double &e_unbond_tot,
             double &e_bind_tot);
     double funbond_without(vector<Particle> &particle_list,
             double &e_unbond_tot, double &e_bind_tot);
 
-private:
-    Parameter param;
+public:
+    Parameter &param;
 
 }; // end of class Force
 
@@ -215,11 +212,10 @@ private:
 class Simulation {
 
 public:
-    Simulation();
     Simulation(string conf_filename);
 
     // Initialize parameter reference from fortran
-    int intpar(double enerkin);
+    int intpar(double &enerkin);
     int start_simulation();
 
     // Init particle list
@@ -244,7 +240,7 @@ public:
     // In outermost loop
     // Algin conformation to coordinate system
     int origin_adjust();
-    int InitVel(double enerkin);
+    int InitVel(double &enerkin);
 
     // Other functions
     // Related to Random generator
@@ -269,18 +265,15 @@ public:
     // Unused function
     double calculate_gyrationradius();
 
-private:
+public:
     vector<Particle> particle_list;
     Parameter param;
     Force force;
     Logger log;
-
     // Output filenames
     vector<string> output_filenames;
-
     // kinetic energy
     double enerkin;
-    
     // TL: what's the mean of xsi, a1-9
     double xsi = 0.0;
     const double pi = 3.141592654, a1 = 3.949846138, a3 = 0.252408784,

@@ -30,7 +30,6 @@ string pf::Logger::format(const char* fmt, ...){
 }
 
 int pf::Logger::info(string filename, string msg){
-
     return 0;
 }
 
@@ -51,8 +50,8 @@ int pf::Parameter::parse(string filename) {
         cerr << "failed to open " << filename << '\n';
         return 1;
     }
-    
-    // Read file head 
+
+    // Read file head
     fin >> title >> date;
     fin >> pdb_filename;
     fin >> npart1 >> nparttol >> nResGap >> iFlagMov;
@@ -65,9 +64,9 @@ int pf::Parameter::parse(string filename) {
     else {
         npartM = nparttol;
     }
-    if (npart1 > nparttol) cerr << "Err: npart1.gt.nparttol\n";
-    if (npart1 > 1 || npart1 > MAXN) cerr << "Err: npart1.lt.1 .or. .gt.MAXN\n";
-    if (nparttol > MAXN) cerr << "Err: nparttol.gt.MAXN\n";
+    if (npart1 > nparttol) cerr << "Err: npart1 > nparttol\n";
+    if (npart1 < 1 || npart1 > MAXN) cerr << "Err: npart1 < 1 or npart1 > MAXN\n";
+    if (nparttol > MAXN) cerr << "Err: nparttol > MAXN\n";
 
     // Read separator between file head and file body
     fin >> term;
@@ -141,10 +140,10 @@ int pf::Parameter::parse(string filename) {
     getline(fin, comments);
 
     // Reasonability check
-    if(nbin_f > nbinmax) cerr << "Err: nbin_f.gt.nbinmax\n";
-    if(nbin_b > nbinmax) cerr << "Err: nbin_b.gt.nbinmax\n";
-    if(nEbin > nEbinmax) cerr << "Err: nEbin.gt.nEbinmax\n";
-    if(nRbin > nRbinmax) cerr << "Err: nRbin.gt.nRbinmax\n";
+    if(nbin_f > nbinmax) cerr << "Err: nbin_f > nbinmax\n";
+    if(nbin_b > nbinmax) cerr << "Err: nbin_b > nbinmax\n";
+    if(nEbin > nEbinmax) cerr << "Err: nEbin > nEbinmax\n";
+    if(nRbin > nRbinmax) cerr << "Err: nRbin > nRbinmax\n";
 
     fin.close();
     return 0;
@@ -227,18 +226,15 @@ pf::Particle::Particle(double x, double y, double z) {
 /////////////////////////////////////////////////////////////////////////
 /*************************Definition of class Force*********************/
 /////////////////////////////////////////////////////////////////////////
-pf::Force::Force() { }
 
-pf::Force::Force(Parameter &param) {
-    this->param = param;
-}
+pf::Force::Force(Parameter &param_) :param(param_){ }
 
 int pf::Force::force(vector<Particle> &particle_list, double &e_pot, 
         double &e_unbond_tot, double &e_bind_tot, double &e_tors_tot, 
         double &e_bend_tot, double &e_bond_tot) {
     e_pot=0.0;
 
-    for (int i = 0; i < param.npartM; i++ ) {
+    for (int i = 0; i < param.npartM; i++) {
         particle_list[i].fx = 0;
         particle_list[i].fy = 0;
         particle_list[i].fz = 0;
@@ -251,7 +247,7 @@ int pf::Force::force(vector<Particle> &particle_list, double &e_pot,
         particle_list[i].fxph = 0;
         particle_list[i].fyph = 0;
         particle_list[i].fzph = 0;
-        particle_list[i].fxun = 0; 
+        particle_list[i].fxun = 0;
         particle_list[i].fyun = 0;
         particle_list[i].fzun = 0;
     }
@@ -293,6 +289,8 @@ double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot) {
         if (rij < eps1) break;
 
         double e_bond = param.ck_r * pow(rij - param.rbond_nat[i], 2);
+        cerr << rij << " " << param.rbond_nat[i] << endl;
+        cerr << e_bond << endl;
         e_bond_tot += e_bond;
         double e_bond_drv =
             -2 * param.ck_r * (rij - param.rbond_nat[i]);
@@ -303,7 +301,7 @@ double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot) {
         double drjy = -driy;
         double drjz = -driz;
 
-        if (i == param.npart1) {
+        if (i != param.npart1) {
             particle_list[i].fxr += e_bond_drv * drix;
             particle_list[i].fyr += e_bond_drv * driy;
             particle_list[i].fzr += e_bond_drv * driz;
@@ -446,7 +444,7 @@ double pf::Force::ftorsion(vector<Particle> &particle_list,
             rnk = sqrt(pow(xnk, 2) + pow(ynk, 2) + pow(znk, 2));
             rmj = sqrt(pow(xmj, 2) + pow(ymj, 2) + pow(zmj, 2));
      
-            if (pow(rnk, 2) < eps || pow(rmj, 2) < eps) continue; 
+            if (pow(rnk, 2) < eps || pow(rmj, 2) < eps) continue;
             phi = (xnk * xmj + ynk * ymj + znk * zmj) / (rnk * rmj);
         } 
 
@@ -557,13 +555,13 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
     for (int k = 0; k < param.nunbond; k++) {
         int i = param.iun[k];
         int j = param.jun[k];
-        
+
         double e_unbond = 0;
         double e_unbond_drv = 0;
 
-        xij = (particle_list[i].x - particle_list[j].x);      
-        yij = (particle_list[i].y - particle_list[j].y);      
-        zij = (particle_list[i].z - particle_list[j].z);      
+        xij = (particle_list[i].x - particle_list[j].x);
+        yij = (particle_list[i].y - particle_list[j].y);
+        zij = (particle_list[i].z - particle_list[j].z);
 
         rij = sqrt(pow(xij, 2) + pow(yij, 2) + pow(zij, 2));
 
@@ -575,7 +573,7 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
             if (rij / param.kunbond[k] - param.gr0 < 8 * param.gdr) { 
                 tem = 1 / (1 + exp((rij / (param.runbond_nat[k] +
                                     param.ddr_sol) - param.gr0) / param.gdr));
-                if (i <= param.npart1 && j > param.npart1) {
+                if (i <= param.npart1 && j <= param.npart1) {
                     param.gQ_f1 += tem;
                 } else if (i <= param.npart1 && j > param.npart1) {
                     param.gQ_b += tem;
@@ -583,7 +581,7 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
                     param.gQ_f2 += tem;
                 }
             }
-            if (i == param.npart1 && j == param.npart1) {
+            if (i <= param.npart1 && j > param.npart1) {
                 sum_rij += (rij - param.runbond_nat[k]);
             }
 
@@ -636,7 +634,7 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
                 e_unbond_drv = param.Alpha2 * e_unbond_drv;
             }
         } else if (param.kunbond[k] == 2) {
-            if((rij / param.CritR_non - param.gr0) <= 8 * param.gdr) { 
+            if((rij / param.CritR_non - param.gr0) < 8 * param.gdr) { 
                 tem = 1 / (1 +
                         exp((rij / param.CritR_non - param.gr0) / param.gdr));
                 if(i <= param.npart1 && j > param.npart1) { 
@@ -719,13 +717,21 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
         double e_unbond_drv = 0;
         
         if (param.kunbond[k] == 1) {
+        xij = particle_list[i].x - particle_list[j].x;
+        yij = particle_list[i].y - particle_list[j].y;
+        zij = particle_list[i].z - particle_list[j].z;
+        rij = sqrt(pow(xij, 2) + pow(yij, 2) + pow(zij, 2));
+
+        if( i <= param.npart1 && j <= param.npart1) {
             e_unbond_drv = param.ga1_f1 + 2 * param.ga2_f1 * (param.gQ_f1 -
                     param.gQ0_f1);
-        } else if(i <= param.npart1 && j > param.npart1) { 
+        }
+        else if(i <= param.npart1 && j > param.npart1) {
           e_unbond_drv = param.ga1_b + 2 * param.ga2_b *
               (param.gQ_b - param.gQ0_b ) + param.ga1_w +
               2 * param.ga2_w * (param.gQ_w - param.gQ0_w);
-        } else {
+        }
+        else {
             e_unbond_drv = param.ga1_f2 + 2 * param.ga2_f2 * (param.gQ_f2 -
                     param.gQ0_f2);
         }
@@ -741,7 +747,7 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
                 ((param.runbond_nat[k] + param.ddr_sol) * param.gdr);
         }
 
-        if (i <- param.npartM) { 
+        if (i <= param.npartM) { 
             particle_list[i].fxun += e_unbond_drv * xij / rij;
             particle_list[i].fyun += e_unbond_drv * yij / rij;
             particle_list[i].fzun += e_unbond_drv * zij / rij;
@@ -752,7 +758,7 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
             particle_list[j].fzun -= e_unbond_drv * zij / rij;
         }
     }
-
+}
     return 0;
 }
 
@@ -970,14 +976,10 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
 /////////////////////////////////////////////////////////////////////////
 /*******************Definition of class Simulation**********************/
 /////////////////////////////////////////////////////////////////////////
-pf::Simulation::Simulation() { }
-
-pf::Simulation::Simulation(string conf_filename) : param(conf_filename) {
-    // DUB:
-    force = Force(param);
+pf::Simulation::Simulation(string conf_filename) : param(conf_filename), force(param){
 }
 
-int pf::Simulation::intpar(double enerkin) {
+int pf::Simulation::intpar(double &enerkin) {
     param.temp = param.temp * param.epsil / param.boltz;
     double timeunit = sqrt(param.amass / param.epsil) * param.sigma_ij;
     // !       dt=0.005*timeunit
@@ -985,12 +987,12 @@ int pf::Simulation::intpar(double enerkin) {
     param.dt = param.s_dt * timeunit;
     param.gm = param.s_gm / timeunit;
 
-    // c_*: intensity arguments 
+    // c_*: intensity arguments
     param.c_0 = param.dt * param.gm / (2.0 * param.amass);
     param.c_1 = (1.0 - param.c_0) * (1.0 - param.c_0 + pow(param.c_0, 2));
-    param.c_2 = (param.dt / (2 * param.amass)) * 
+    param.c_2 = (param.dt / (2 * param.amass)) *
       (1.0 - param.c_0 + pow(param.c_0, 2));
-    param.randconst = 
+    param.randconst =
       sqrt(2.0 * param.boltz * param.temp * param.gm / param.dt);
 
     // !  no change ck_r    -ZRLiu
@@ -1040,44 +1042,44 @@ int pf::Simulation::intpar(double enerkin) {
 
     // !  initialize histogram data
     for (int i = 0; i < param.nbin_f; i++) {
-	    param.PFbin[i] = 0.0;
+	    statis.PFbin[i] = 0.0;
         for (int j = 0; j < param.nbin_b; j++) {
-            param.PBbin[j] = 0.0;
-            param.PFBbin[i][j] = 0.0;
+            statis.PBbin[j] = 0.0;
+            statis.PFBbin[i][j] = 0.0;
             for (int k = 0; k < param.nEbin; k++) {
-                param.PFBEbin[i][j][k] = 0.0;
+                statis.PFBEbin[i][j][k] = 0.0;
             } // fortran code: 50 continue
             for (int k = 0; k < param.nEbbin; k++) {
-                param.PQbEbbin[j][k] = 0.0;
+                statis.PQbEbbin[j][k] = 0.0;
             } // fortran code: 55 continue
             for (int l = 0; l < param.nRbin; l++) {
-                param.PFBRbin[i][j][l] = 0.0;
+                statis.PFBRbin[i][j][l] = 0.0;
             } // fortran code: 60 continue
             for (int k = 0; k < param.nbin_f; k++) {
-                param.PFFBbin[i][k][j] = 0.0;
+                statis.PFFBbin[i][k][j] = 0.0;
             } // fortran code: 70 continue
         } // fortran code: 40 continue
     } // fortran code: 30 continue
 
     // if ( iFlagMov.le.0 .or. IsWbin.eq.0 ) goto 180
-    if (param.iFlagMov <= 0 || param.IsWbin == 0 ) return 0; 
+    if (param.iFlagMov <= 0 || param.IsWbin == 0 ) return 0;
     for (int i = 0; i < param.nWbin; i++) {
-        param.PQwbin[i] = 0;
+        statis.PQwbin[i] = 0;
         for (int j = 0; j < param.nbin_b; j++) {
-            param.PQwQbbin[i][j] = 0;
+            statis.PQwQbbin[i][j] = 0;
         } // fortran code: 110 continue
         for (int l = 0; l < param.nRbin; l++) {
             // PQwRbin(i,l,1)=0 PQwRbin(i,l,2)=0
-            param.PQwRbin[i][l][0] = 0;
-            param.PQwRbin[i][l][1] = 0;
+            statis.PQwRbin[i][l][0] = 0;
+            statis.PQwRbin[i][l][1] = 0;
         } // fortran code: 120 continue
         for (int k = 0; k < param.nEbbin; k++) {
             // PQwEbbin(i,k,1)=0 PQwEbbin(i,k,2)=0
-            param.PQwEbbin[i][k][0] = 0;
-            param.PQwEbbin[i][k][1] = 0;
+            statis.PQwEbbin[i][k][0] = 0;
+            statis.PQwEbbin[i][k][1] = 0;
         } // fortran code: 130 continue
         for (int j = 0; j < param.nbin_f; j++) {
-            param.PQwQfbin[i][j] = 0;
+            statis.PQwQfbin[i][j] = 0;
         } // fortran code: 140 continue
     } // fortran code: 150 continue
     // fortran code: 180 continue
@@ -1210,7 +1212,7 @@ int pf::Simulation::output_info() {
     cout << setw(50) << "frequency of snapshots:" << param.nsnap << endl;
     cout << setw(50) << "Avogadro number:" << param.avsn0 << endl;
     cout << setw(50) << "Boltzmann constant:" << param.boltz << endl;
-    cout << setw(50) << "random seed:" << param.ioctsd << endl;
+    cout << setw(50) << "random seed:" << param.rand_num << endl;
 
     cout << setw(50) << "Lagrange constraint a1_f1:" << param.ga1_f1 << endl;
     cout << setw(50) << "Lagrange constraint a2_f1:" << param .ga2_f1 << endl;
@@ -1289,6 +1291,7 @@ int pf::Simulation::output_info() {
 
 /**
  * BUG: initial conformation file may store multiple inital conformation
+ * BUG: 只读了第一个构象
  * Read particles from file
  */
 int pf::Simulation::read_nativeconform(string filename) {
@@ -1302,7 +1305,7 @@ int pf::Simulation::read_nativeconform(string filename) {
     for (int i = 0; i < param.nparttol; i++) {
         double x, y, z;
         fin >> x >> y >> z;
-        Particle particle(x, y, z); 
+        Particle particle(x, y, z);
         particle_list.push_back(particle);
     }
     return particle_list.size();
@@ -1319,10 +1322,12 @@ int pf::Simulation::read_appNCS(string filename) {
     // Repeatedly read the initial coordinates of particle
     string skip_others;
     // fortran code: nunbond=0. (TL: I guess: unbond is similar to the indexi.)
-    param.nunbond = 0;
+    param.nunbond = -1;
     for (int i = 0; i < MAXUNBO; i++) {
-        int item1, item2, item3;
+        int item1 = -1, item2 = -1, item3 = -1;
         fin >> item1 >> item2 >> item3;
+        if( item1 == -1)
+            break;
         if (item1 > param.npart1) {
             if (item1 < param.npart1 + param.nResGap) {
                 cerr << "contact map error 4.\n";
@@ -1335,7 +1340,7 @@ int pf::Simulation::read_appNCS(string filename) {
             }
 		    item2 -= param.nResGap;
         }
-        if (item1 >= 0 || item1 > param.nparttol) {
+        if (item1 <= 0 || item1 > param.nparttol) {
             cerr << "contact map error 1.\n";
         }
         if (item2 <= 0 || item2 > param.nparttol) {
@@ -1368,6 +1373,7 @@ int pf::Simulation::read_appNCS(string filename) {
 
 /**
  * Read initial conformation of protein
+ * 修改：只读一个构象
  */
 int pf::Simulation::read_initalconform(string filename) {
     fstream fin(filename, std::ifstream::in);
@@ -1383,13 +1389,10 @@ int pf::Simulation::read_initalconform(string filename) {
     //            read(20,*) xinit(i),yinit(i),zinit(i)
     //  315      continue
     //  316    continue
-    int i = param.nCon0;
-    do {
-        for (int j = 0; j < param.nparttol; j++) {
-            fin >> particle_list[j].xinit >> particle_list[j].yinit >> 
-                particle_list[j].zinit;
-        }
-    } while (i-- > 0);
+    for (int j = 0; j < param.nparttol; j++) {
+        fin >> particle_list[j].xinit >> particle_list[j].yinit >>
+            particle_list[j].zinit;
+    }
 
     return 0;
 }
@@ -1443,7 +1446,7 @@ int pf::Simulation::start_simulation() {
         // (in word, reverse initial and native conformation filenames) 
         // fortran code: read(20,*) xinit(i),yinit(i),zinit(i)
         read_initalconform(param.initialconform_filename);
-    
+
         // Copy from fortran code, TL: means?
         // Utility counter for all trajectories
         // (对得到的所有轨迹进行统计：发生/未发生的百分比)
@@ -1473,7 +1476,7 @@ int pf::Simulation::start_simulation() {
             force.force(particle_list, e_pot, e_unbond_tot, e_bind_tot,
                     e_tors_tot, e_bend_tot, e_bond_tot);
             // Generate a random coordinates
-            RANTERM(); 
+            RANTERM();
 
             for (int kl = 0; kl < param.npartM; kl++) {
                 particle_list[kl].fxo     = particle_list[kl].fx;
@@ -1493,7 +1496,7 @@ int pf::Simulation::start_simulation() {
             param.nadim = -1; // fortran code: nadim=-1
             // ! main dynamics cycle
             // fortran code: do 100 nadim_new=0,nstep
-            for (int j = 0; j < param.nstep; j++) {
+            for (int j = 0; j < 1/*param.nstep*/; j++) {
                 param.nadim += 1;
                 verlet(enerkin, e_pot);
             
@@ -1516,7 +1519,6 @@ int pf::Simulation::start_simulation() {
                     nadim_old = param.nadim;
                     nOutGap_old = nOutputGap;
                 }
-                
                 // ! restore, TL: why restore?
                 if (!(particle_list[0].vx >= -1e6
                             && particle_list[0].vx <= 1e6)) {
@@ -1544,7 +1546,7 @@ int pf::Simulation::start_simulation() {
                     nOutputGap = nOutGap_old;
                 }
                 // !-------------save data for purpose of restore end---------- 
-                            
+
                 // !--------------output conformation-------------
                 nOutputGap += 1;
                 output_conformation(nOutputGap, nOutputCount);
@@ -1636,7 +1638,6 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot) {
                 * (particle_list[i].fzo + particle_list[i].frandzo -
                     param.gm * particle_list[i].vz) / 2.0);
     }
-
     e_pot = 0.0;
     double e_bond_tot = 0.0;
     double e_bend_tot = 0.0;
@@ -1646,7 +1647,7 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot) {
     force.force(particle_list, e_pot, e_unbond_tot, e_bind_tot, e_tors_tot,
             e_bend_tot, e_bond_tot);
 
-    // Calculate verlocity  
+    // Calculate verlocity
     for (int i = 0; i < param.npartM; i++) {
         particle_list[i].vx = param.c_1 * particle_list[i].vx + param.c_2 * 
             (particle_list[i].fxo + particle_list[i].frandxo +
@@ -1657,6 +1658,8 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot) {
         particle_list[i].vz = param.c_1 * particle_list[i].vz + param.c_2 * 
             (particle_list[i].fzo + particle_list[i].frandzo +
              particle_list[i].fz + particle_list[i].frandz);
+        enerkin += pow(particle_list[i].vx, 2) + pow(particle_list[i].vy, 2) +
+            pow(particle_list[i].vz, 2);
     }
 
     for (int i = 0; i < param.npartM; i++) {
@@ -1716,43 +1719,47 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot) {
         if(param.gQ_b <= param.cri_Qb) iQb_cri=1;
 
         // !  for PFBbin:
-        param.PFbin[ibin_f] = param.PFbin[ibin_f] + 1;
-        param.PBbin[ibin_b] = param.PBbin[ibin_b] + 1;
-        param.PFBbin[ibin_f][ibin_b] = param.PFBbin[ibin_f][ibin_b] + 1;
-        param.PFBEbin[ibin_f][ibin_b][iEbin] =
-            param.PFBEbin[ibin_f][ibin_b][iEbin] + 1;
-        param.PQbEbbin[ibin_b][iEbbin] = param.PQbEbbin[ibin_b][iEbbin] + 1;
-        param.PFBRbin[ibin_f][ibin_b][iRbin] = 
-            param.PFBRbin[ibin_f][ibin_b][iRbin] + 1;
-        param.PFFBbin[ibin_f1][ibin_f2][ibin_b] = 
-            param.PFFBbin[ibin_f1][ibin_f2][ibin_b] + 1;
+        statis.PFbin[ibin_f] = statis.PFbin[ibin_f] + 1;
+        statis.PBbin[ibin_b] = statis.PBbin[ibin_b] + 1;
+        statis.PFBbin[ibin_f][ibin_b] = statis.PFBbin[ibin_f][ibin_b] + 1;
+        statis.PFBEbin[ibin_f][ibin_b][iEbin] =
+            statis.PFBEbin[ibin_f][ibin_b][iEbin] + 1;
+        statis.PQbEbbin[ibin_b][iEbbin] = statis.PQbEbbin[ibin_b][iEbbin] + 1;
+        statis.PFBRbin[ibin_f][ibin_b][iRbin] = 
+            statis.PFBRbin[ibin_f][ibin_b][iRbin] + 1;
+        statis.PFFBbin[ibin_f1][ibin_f2][ibin_b] = 
+            statis.PFFBbin[ibin_f1][ibin_f2][ibin_b] + 1;
 
-        param.PQwbin[iWbin] = param.PQwbin[iWbin] + 1;
-        param.PQwQbbin[iWbin][ibin_b] = param.PQwQbbin[iWbin][ibin_b] + 1;
-        param.PQwRbin[iWbin][iRbin][iQb_cri] =
-            param.PQwRbin[iWbin][iRbin][iQb_cri] + 1;
-        param.PQwEbbin[iWbin][iEbbin][iQb_cri] = 
-            param.PQwEbbin[iWbin][iEbbin][iQb_cri] + 1;
-        param.PQwQfbin[iWbin][ibin_f1] = param.PQwQfbin[iWbin][ibin_f1] + 1;
-    }                        
+        statis.PQwbin[iWbin] = statis.PQwbin[iWbin] + 1;
+        statis.PQwQbbin[iWbin][ibin_b] = statis.PQwQbbin[iWbin][ibin_b] + 1;
+        statis.PQwRbin[iWbin][iRbin][iQb_cri] =
+            statis.PQwRbin[iWbin][iRbin][iQb_cri] + 1;
+        statis.PQwEbbin[iWbin][iEbbin][iQb_cri] = 
+            statis.PQwEbbin[iWbin][iEbbin][iQb_cri] + 1;
+        statis.PQwQfbin[iWbin][ibin_f1] = statis.PQwQfbin[iWbin][ibin_f1] + 1;
+    }
 
     // Write the intermediate results
-    string msg = "nadim\tgQ_f\tgQ_b\tgQ_w\tE_k\tE_pot\tE_b\tE_bind]\teGr\tR\n";
-    if (param.nadim == 0) log.info(output_filenames[9], msg);
-    if (param.nadim == 0) cout << msg;
-    log.format("%13d %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f \
-        %10.3f %10.3f", param.nadim, param.gQ_f, param.gQ_b, param.gQ_w,
+    string msg = "nadim\tgQ_f\tgQ_b\tgQ_w\tE_k\tE_pot\tE_b\tE_bind\teGr\tR\n";
+    if (param.nadim == 0)
+        log.info(output_filenames[9], msg);
+    if (param.nadim == 0)
+        cout << msg;
+    msg = log.format("%13d %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f \
+        %10.3f %10.3f \n", param.nadim, param.gQ_f, param.gQ_b, param.gQ_w,
         enerkin, e_pot, e_bond_tot, e_unbond_tot, e_bind_tot, param.eGr,
         param.R);
-    if (param.nadim % param.nsnap == 0) log.info(output_filenames[9], msg);
-    if (param.nadim % param.nsnap == 0) cout << msg;
-                                          
-    return 0;                             
-}                                         
+    if (param.nadim % param.nsnap == 0)
+        log.info(output_filenames[9], msg);
+    if (param.nadim % param.nsnap == 0)
+        cout << msg;
+    return 0;
+}
 
 int pf::Simulation::pbc_shift() {
 	// fortran code: if(npart1.le.0) goto 400
-    if(param.npart1 <= 0) return 0; 
+    if(param.npart1 <= 0)
+        return 0;
 
     // ! note that the chain 2 is located at the center
     double x00 = 0.0;
@@ -1763,24 +1770,23 @@ int pf::Simulation::pbc_shift() {
         y00 += particle_list[i].y;
         z00 += particle_list[i].z;
     }
-
     x00 = x00 / param.npart1;
     y00 = y00 / param.npart1;
     z00 = z00 / param.npart1;
 
     // !  R is the distance to the center (0,0,0) of the box to center of
-    // chain A (x00,y00,z00) 
+    // chain A (x00,y00,z00)
     param.R = sqrt(pow(x00, 2) + pow(y00, 2) + pow(z00, 2));
 
     // x coordinate setting
-	int ixflag = 0;  
+	int ixflag = 0;
 	if (x00 > ( param.pL / 2.0 + param.dl)) {
         ixflag = 1;
         for (int i = 0; i < param.npart1; i++) {
             particle_list[i].x -= param.pL;
         }
     }
-    // fortran code: if ( ixflag == 1 ) goto 111  
+    // fortran code: if ( ixflag == 1 ) goto 111
 	if ( ixflag != 1 && x00 < (-1 * param.pL / 2.0 - param.dl)) {
         for (int i = 0; i < param.npart1; i++) {
             particle_list[i].x += param.pL;
@@ -1925,7 +1931,7 @@ int pf::Simulation::write_histogram() {
     // add 1 to the i-related compuation
     for (int i = 0; i < param.nbin_f; i++) {
         string msg = log.format("%6.2f, %12.1f\n",
-                param.vbin0 + (i + 1 - 0.5) * param.dbin_f, param.PFbin[i]);
+                param.vbin0 + (i + 1 - 0.5) * param.dbin_f, statis.PFbin[i]);
         log.info(output_filenames[15], msg);
     }
     
@@ -1935,7 +1941,7 @@ int pf::Simulation::write_histogram() {
         for (int i = 0; i < param.nbin_b; i++) {
             double sumQ_b = 0;
             for (int j = 0; j < param.nbin_f; j++) {
-		        sumQ_b += param.PFBbin[j][i];
+		        sumQ_b += statis.PFBbin[j][i];
             }
             msg = log.format("%6.2f, %12.1f\n",
                     param.vbin0 + (i + 1 - 0.5) * param.dbin_b, sumQ_b);
@@ -1947,22 +1953,22 @@ int pf::Simulation::write_histogram() {
     //   do 1004 j=1, nbin_b        
     for (int i = 0; i < param.nbin_f; i++) {
         for (int j = 0; j < param.nbin_b; j++) {
-            if (param.iFlagMov > 0 && param.PFBbin[i][j] > 1e-5) {
+            if (param.iFlagMov > 0 && statis.PFBbin[i][j] > 1e-5) {
                 msg = log.format("%7.2f %7.2f, %12.1f\n",
                         param.vbin0 + (i + 1 - 0.5) * param.dbin_f,
                         param.vbin0 + (j + 1 - 0.5) * param.dbin_b,
-                        param.PFBbin[i][j]);
+                        statis.PFBbin[i][j]);
                 log.info(output_filenames[19], msg);
             }
             // fortran code: if ( IsEbin == 0 ) goto 1007
             if (param.IsEbin != 0 ) {
                 for (int k = 0; k < param.nEbin; k++) {
-                    if (param.PFBEbin[i][j][k] > 1e-5) {
+                    if (statis.PFBEbin[i][j][k] > 1e-5) {
                         msg = log.format("%7.2f %7.2f, %8.2f, %12.1f",
                                 param.vbin0 + (i + 1 - 0.5) * param.dbin_f,
                                 param.vbin0 + (j + 1 - 0.5) * param.dbin_b,
                                 param.vEbin0 + (k + 1 - 0.5) * param.dEbin,
-                                param.PFBEbin[i][j][k]);
+                                statis.PFBEbin[i][j][k]);
                         log.info(output_filenames[23], msg);
                     } 
                 } // 1005 continue
@@ -1971,12 +1977,12 @@ int pf::Simulation::write_histogram() {
             // fortran code: if ( IsRbin == 0 ) goto 1008
             if (param.IsRbin != 0 ) {
                 for (int l = 0; l < param.nRbin; l++) {
-                    if(param.PFBRbin[i][j][l] > 1e-5) {
+                    if(statis.PFBRbin[i][j][l] > 1e-5) {
                         msg = log.format("%7.2f %7.2f, %8.2f, %12.1f",
                                 param.vbin0 + (i + 1 - 0.5) * param.dbin_f,
                                 param.vbin0 + (j + 1 - 0.5) * param.dbin_b,
                                 param.vRbin0 + (l + 1 - 0.5) * param.dRbin,
-                                param.PFBRbin[i][j][l]);
+                                statis.PFBRbin[i][j][l]);
                         log.info(output_filenames[24], msg);
                     } 
                 } // 1006 continue
@@ -1985,12 +1991,12 @@ int pf::Simulation::write_histogram() {
             // fortran code: if ( iFlagMov .ne. 2 ) goto 1010
             if (param.iFlagMov == 2) {
                 for (int l = 0; l < param.nbin_f; l++) {
-                    if (param.PFFBbin[i][l][j] > 1e-5) {
+                    if (statis.PFFBbin[i][l][j] > 1e-5) {
                         msg = log.format("%7.2f %7.2f, %8.2f, %12.1f",
                                 param.vbin0 + (i + 1 - 0.5) * param.dbin_f,
                                 param.vbin0 + (l + 1 - 0.5) * param.dbin_f,
                                 param.vbin0 + (j +1 - 0.5) * param.dbin_b,
-                                param.PFFBbin[i][l][j]);
+                                statis.PFFBbin[i][l][j]);
                         log.info(output_filenames[25], msg);
                     }
                 } // 1009 continue  
@@ -2003,11 +2009,11 @@ int pf::Simulation::write_histogram() {
     if (param.iFlagMov > 0 && param.IsEbbin != 0 ) {
         for (int j = 0; j < param.nbin_b; j++) {
             for (int k = 0; k < param.nEbbin; k++) {
-                if(param.PQbEbbin[j][k] > 1e-5) {
+                if(statis.PQbEbbin[j][k] > 1e-5) {
                     msg = log.format("%8.2f %8.2f, %12.1f",
                             param.vbin0 + (j + 1 - 0.5) * param.dbin_b,
                             param.vEbbin0 + (k + 1 - 0.5) * param.dEbbin,
-                            param.PQbEbbin[j][k]);
+                            statis.PQbEbbin[j][k]);
                     log.info(output_filenames[29], msg);
                 } 
             } // 30 continue
@@ -2018,47 +2024,47 @@ int pf::Simulation::write_histogram() {
     if (param.iFlagMov > 0 && param.IsWbin != 0 ) {
         for (int i = 0; i < param.nWbin; i++) {
             msg = log.format("%8.2f, %12.1f", param.vWbin0 +
-                    (i + 1 - 0.5) * param.dWbin, param.PQwbin[i]);
+                    (i + 1 - 0.5) * param.dWbin, statis.PQwbin[i]);
             log.info(output_filenames[31], msg);
             
             for (int j = 0; j < param.nbin_b; j++) {
-		        if (param.PQwQbbin[i][j] > 1e-5) { 
+		        if (statis.PQwQbbin[i][j] > 1e-5) { 
                     msg = log.format("%8.2f %8.2f, %12.1f",
                             param.vWbin0 + (i + 1 - 0.5) * param.dWbin,
                             param.vbin0 + (j + 1 - 0.5) * param.dbin_b,
-                            param.PQwQbbin[i][j]);
+                            statis.PQwQbbin[i][j]);
                     log.info(output_filenames[31], msg);
                 }
             }
             for (int l = 0; l < param.nRbin; l++) {
-		        if (param.PQwRbin[i][l][0] > 1e-5 || 
-                        param.PQwRbin[i][l][1] > 1e-5) {
+		        if (statis.PQwRbin[i][l][0] > 1e-5 || 
+                        statis.PQwRbin[i][l][1] > 1e-5) {
                     // write(32, '(2f8.2, 2f12.1)') vWbin0+(i-0.5)*dWbin,
                     // vRbin0+(l-0.5)*dRbin, PQwRbin(i,l,1), PQwRbin(i,l,2)
                     // PQwRbin(i,l,1) --> PQwRbin(i,l,0)
                     msg = log.format("%8.2f %8.2f, %12.1f %12.1f",
                             param.vWbin0 + (i + 1 - 0.5) * param.dWbin,
                             param.vRbin0 + (l + 1 - 0.5) * param.dRbin,
-                            param.PQwRbin[i][l][0], param.PQwRbin[i][l][1]);
+                            statis.PQwRbin[i][l][0], statis.PQwRbin[i][l][1]);
                     log.info(output_filenames[31], msg);
                 }
             }
             for (int k = 0; k < param.nEbbin; k++) {
-		        if (param.PQwEbbin[i][k][0] > 1e-5 ||
-                        param.PQwEbbin[i][k][1] > 1e-5) { 
+		        if (statis.PQwEbbin[i][k][0] > 1e-5 ||
+                        statis.PQwEbbin[i][k][1] > 1e-5) { 
                     msg = log.format("%8.2f %8.2f, %12.1f %12.1f",
                             param.vWbin0 + (i + 1 - 0.5) * param.dWbin,
                             param.vEbbin0 + (k + 1 - 0.5) * param.dEbbin,
-                            param.PQwEbbin[i][k][0], param.PQwEbbin[i][k][1]);
+                            statis.PQwEbbin[i][k][0], statis.PQwEbbin[i][k][1]);
                     log.info(output_filenames[33], msg);
                 }
             }
             for (int j = 0; j < param.nbin_f; j++) {
-		        if (param.PQwQfbin[i][j] > 1e-5) {
+		        if (statis.PQwQfbin[i][j] > 1e-5) {
                     msg = log.format("%8.2f %8.2f, %12.1f %12.1f",
                             param.vWbin0 + (i + 1 - 0.5) * param.dWbin,
                             param.vbin0 + (j + 1 - 0.5) * param.dbin_f,
-                            param.PQwQfbin[i][j]);
+                            statis.PQwQfbin[i][j]);
                     log.info(output_filenames[34], msg);
                 } 
             }
@@ -2072,17 +2078,18 @@ int pf::Simulation::write_histogram() {
  * 对体系进行对齐
  */
 int pf::Simulation::origin_adjust() {
-    if (param.nparttol - param.npart1 <= 0) return 0; 
+    if (param.nparttol - param.npart1 <= 0) return 0;
 
     double x00 = 0.0;
     double y00 = 0.0;
     double z00 = 0.0;
 
     // fortran code: do 281 j=npart1+1,nparttol
-    double xparticle[param.nparttol - param.npart1];
-    for (int j = param.npart1 + 1; j <= param.nparttol; j++) {
+    //double xparticle[param.nparttol];
+    for (int j = param.npart1; j < param.nparttol; j++) {
         // xparticle[j] is never be used
-        x00 = x00 + xparticle[j];
+        //x00 = x00/* + xparticle[j] */;
+        x00 = x00 + particle_list[j].x;
         y00 = y00 + particle_list[j].y;
         z00 = z00 + particle_list[j].z;
     }
@@ -2090,6 +2097,7 @@ int pf::Simulation::origin_adjust() {
     x00 /= (param.nparttol - param.npart1);
     y00 /= (param.nparttol - param.npart1);
     z00 /= (param.nparttol - param.npart1);
+
 
     for (int j = 0; j < param.nparttol; j++) {
 	    particle_list[j].x -= x00;
@@ -2100,7 +2108,7 @@ int pf::Simulation::origin_adjust() {
     return 0;
 }
 
-int pf::Simulation::InitVel(double enerkin) {
+int pf::Simulation::InitVel(double &enerkin) {
     double sumvx = 0.0;
     double sumvy = 0.0;
     double sumvz = 0.0;
@@ -2110,9 +2118,9 @@ int pf::Simulation::InitVel(double enerkin) {
         particle_list[i].vx = vm * gauss(xsi);
         particle_list[i].vy = vm * gauss(xsi);
         particle_list[i].vz = vm * gauss(xsi);
-        sumvx += particle_list[i].vx; 
-        sumvy += particle_list[i].vy; 
-        sumvz += particle_list[i].vz; 
+        sumvx += particle_list[i].vx;
+        sumvy += particle_list[i].vy;
+        sumvz += particle_list[i].vz;
     }
 
     sumvx /= param.npartM;
@@ -2157,25 +2165,37 @@ double pf::Simulation::rannyu() {
     // fortran code: common /rnyucm/ m(4),l(4), TL: when do they execute
     // TL: Is there any relationship between m/l(4) with m/l1-4?
     double ooto12 = 1.0 / 4096.0;
-    double itwo12 = 4096;
+    int itwo12 = 4096;
     // Initialize m1-4 l1-4 in setrn() 
     // int m1 = 0, m2 = 0, m3 = 0, m4 = 0, l1 = 0, l2 = 0, l3 = 0, l4 = 0;
     //////////////////Body of rnyubd()/////////////////////
-    int m1 = 502, m2 = 1521, m3 = 4071, m4 = 2107;
-    int l1 = 0, l2 = 0, l3 = 0, l4 = 1;
-    ///////////////////////////////////////////////////////
-    int i1 = l1 * m4 + l2 * m3 + l3 * m2 + l4 * m1;
-    int i2 = l2 * m4 + l3 * m3 + l4 * m2;
-    int i3 = l3 * m4 + l4 * m3;
-    int i4 = l4 * m4;
-    l4 = fmod(i4, itwo12);
-    i3 = i3 + i4 / itwo12;  
-    l3 = fmod(i3, itwo12);
+    m[0] = 502, m[1] = 1521, m[2] = 4071, m[3] = 2107;
+    // int l1 = 0, l2 = 0, l3 = 0, l4 = 1;
+    // ///////////////////////////////////////////////////////
+    // int i1 = l1 * m4 + l2 * m3 + l3 * m2 + l4 * m1;
+    // int i2 = l2 * m4 + l3 * m3 + l4 * m2;
+    // int i3 = l3 * m4 + l4 * m3;
+    // int i4 = l4 * m4;
+    // l4 = fmod(i4, itwo12);
+    // i3 = i3 + i4 / itwo12;
+    // l3 = fmod(i3, itwo12);
+    // i2 = i2 + i3 / itwo12;
+    // l2 = fmod(i2, itwo12);
+    // l1 = fmod((i1 + i2 / itwo12), itwo12);
+    // double rannyu = ooto12 * (float(l1) +
+    //         ooto12 * (float(l2) + ooto12 * (float(l3) + ooto12 * (float(l4)))));
+    int i1 = l[0] * m[3] + l[1] * m[2] + l[2] * m[1] + l[3] * m[0];
+    int i2 = l[1] * m[3] + l[2] * m[2] + l[3] * m[1];
+    int i3 = l[2] * m[3] + l[3] * m[2];
+    int i4 = l[3] * m[3];
+    l[3] = i4 % itwo12;
+    i3 = i3 + i4 / itwo12;
+    l[2] = i3 % itwo12;
     i2 = i2 + i3 / itwo12;
-    l2 = fmod(i2, itwo12);
-    l1 = fmod((i1 + i2 / itwo12), itwo12);
-    double rannyu = ooto12 * (float(l1) +
-            ooto12 * (float(l2) + ooto12 * (float(l3) + ooto12 * (float(l4)))));
+    l[1] = i2 % itwo12;
+    l[0] = (i1 + i2 / itwo12) % itwo12;
+    double rannyu = ooto12 * (float(l[0]) +
+            ooto12 * (float(l[1]) + ooto12 * (float(l[2]) + ooto12 * (float(l[3])))));
     return  rannyu;
 }
 
@@ -2183,7 +2203,7 @@ int pf::Simulation::setrn(int iseed[4]) {
     int isn, ipe, ipd, id;
     for (int j = 0; j < 4; j++) {
         isn = 0;
-        for (int i = 0; j < 4; j++) {
+        for (int i = 0; i < 4; i++) {
             // fortran code: ipe = 4 - i
             ipe = 4 - (i + 1);
             ipd = pow(10, ipe);
@@ -2192,13 +2212,13 @@ int pf::Simulation::setrn(int iseed[4]) {
             iseed[j] -= id * ipd;
         }
         iseed[j] = isn;
-        for (int i = 0; j < 4; j++) {
-            l[i] = iseed[i];
-        }
-        // fortran code: l(4)=2*(l(4)/2)+1
-        l[3] = 2 * (l[3] / 2) + 1;
     }
 
+    for (int i = 0; i < 4; i++) {
+        l[i] = iseed[i];
+    }
+    // fortran code: l(4)=2*(l(4)/2)+1
+    l[3] = 2 * (l[3] / 2) + 1;
     return 0;
 }
 
@@ -2295,7 +2315,7 @@ int pf::Simulation::nativeinformation() {
         xkj = particle_list[k].x - particle_list[j].x;
         ykj = particle_list[k].y - particle_list[j].y;
         zkj = particle_list[k].z - particle_list[j].z;
-        
+
         rij = sqrt(pow(xij, 2) + pow(yij, 2) + pow(zij, 2));
         rkj = sqrt(pow(xkj, 2) + pow(ykj, 2) + pow(zkj, 2));
 
@@ -2316,7 +2336,7 @@ int pf::Simulation::nativeinformation() {
         int j = i + 1;
         int k = i + 2;
         int l = i + 3;
-        
+
         xij = particle_list[j].x - particle_list[i].x;
         yij = particle_list[j].y - particle_list[i].y;
         zij = particle_list[j].z - particle_list[i].z;
@@ -2347,7 +2367,7 @@ int pf::Simulation::nativeinformation() {
 
         double rnk=sqrt(pow(xnk, 2) + pow(ynk, 2) + pow(znk, 2));
         double rmj=sqrt(pow(xmj, 2) + pow(ymj, 2) + pow(zmj, 2));
-        if(pow(rnk, 2) < eps || pow(rmj, 2) < eps) break; 
+        if(pow(rnk, 2) < eps || pow(rmj, 2) < eps) break;
 
         double phi = (xnk * xmj + ynk * ymj + znk * zmj) / (rnk * rmj);
 
@@ -2357,16 +2377,15 @@ int pf::Simulation::nativeinformation() {
         double tempval = xkj * xil + ykj * yil + zkj * zil;
         param.dihedral_nat[i] = tempval > 0 ? phi : (-1.0 * phi);
     }
-         
     return 0;
-}        
+}
 /////////////////////////////////////////////////////////////////////////
 /******************End of definition of class Simulation****************/
 /////////////////////////////////////////////////////////////////////////
-         
+
 int main()
 {
-    pf::Parameter param("input.1BE9.test.dat");
-    param.display();
-	return 0;
+    pf::Simulation sim("input.1BE9.test.dat");
+    sim.start_simulation();
+    return 0;
 }
