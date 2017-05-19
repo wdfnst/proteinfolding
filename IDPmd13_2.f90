@@ -104,7 +104,8 @@
       common/randomterms/c_0,c_1,c_2,randconst
       common/interacparam/ck_r,ck_tht,ck_phi1,ck_phi3,epsil1,epsil2,epsil
 
-      common/LagrangeData/ga1_f1, ga2_f1, ga1_f2, ga2_f2, ga1_b, ga2_b, gQ0_f1, gQ0_f2, gQ0_b, gr0, gdr, gQ_f, gQ_f1, gQ_f2, gQ_b, eGr
+      common/LagrangeData/ga1_f1, ga2_f1, ga1_f2, ga2_f2, ga1_b,ga2_b,gQ0_f1,&
+            gQ0_f2, gQ0_b, gr0, gdr, gQ_f, gQ_f1, gQ_f2, gQ_b, eGr
       common/LagrangeData2/ga1_w, ga2_w, gQ0_w, gQ_w, alpha_Qw
 
       common/OutputConform/nConformOuput, outQf1_i, outQf1_f, outQf2_i, outQf2_f, iQb_i, iQb_f, nOutput0, ndOutput
@@ -590,7 +591,8 @@
           endif
           write(28,'(3i5,i13,3f10.3)') nConfcount, nRuncount, k, nadim, gQ_b, gQ_f1, gQ_f2
  1500     continue
-          write(28,'(''# Conform No.:'',i5,'',   Folding times:'',i5,'',   Transmission coefficient:'',f10.3,'',   unFolding times:'',i5)')  &
+          write(28,'(''# Conform No.:'',i5,'',   Folding times:'',i5,'',&
+          Transmission coefficient:'',f10.3,'',   unFolding times:'',i5)')  &
 		            nConfcount,nFoldSub,1.0*nFoldSub/nRunConf, nunFoldSub
  2000   continue
 	    aveNadim=aveNadim/((nConform-nCon0)*nRunConf)
@@ -715,7 +717,8 @@
      
 	  do 1003 i=1, nbin_f
         do 1004 j=1, nbin_b        
-          if(iFlagMov.gt.0 .and. PFBbin(i,j).gt.1e-5)  write(19, '(2f7.2, f12.1)') vbin0+(i-0.5)*dbin_f,vbin0+(j-0.5)*dbin_b,PFBbin(i,j)
+          if(iFlagMov.gt.0 .and. PFBbin(i,j).gt.1e-5)  write(19,'(2f7.2, f12.1)') vbin0 &
+            +(i-0.5)*dbin_f,vbin0+(j-0.5)*dbin_b,PFBbin(i,j)
           if ( IsEbin == 0 ) goto 1007
 		  do 1005 k=1,nEbin
 		    if(PFBEbin(i,j,k).gt.1e-5) then
@@ -885,7 +888,7 @@
       z00=0.0
 
       do 281 j=npart1+1,nparttol
-        x00=x00+xparticle(j)
+        x00=x00+x(j)
         y00=y00+y(j)
         z00=z00+z(j)
   281 continue
@@ -1076,7 +1079,7 @@
       do 2  i=1,npartM
       fx(i)=0
       fy(i)=0
-      az(i)=0
+      fz(i)=0
       fxr(i)=0
       fyr(i)=0
       fzr(i)=0
@@ -1148,7 +1151,8 @@
       common/variables/temp,dt,nstep,nadim,nsnap,gm,enscale
       common/contactmap/iun(MAXUNBO),jun(MAXUNBO),kunbond(MAXUNBO),nQnative_f1,nQnative_f2,nQnative_b
       common/interacparam/ck_r,ck_tht,ck_phi1,ck_phi3,epsil1,epsil2,epsil
-      common/LagrangeData/ga1_f1, ga2_f1, ga1_f2, ga2_f2, ga1_b, ga2_b, gQ0_f1, gQ0_f2, gQ0_b, gr0, gdr, gQ_f, gQ_f1, gQ_f2, gQ_b, eGr
+      common/LagrangeData/ga1_f1, ga2_f1, ga1_f2, ga2_f2, ga1_b, ga2_b, gQ0_f1,&
+        gQ0_f2, gQ0_b, gr0, gdr, gQ_f, gQ_f1, gQ_f2, gQ_b, eGr
       common/LagrangeData2/ga1_w, ga2_w, gQ0_w, gQ_w, alpha_Qw
 
       common/bias/Alpha1,Alpha2,Beta,Delta
@@ -1362,7 +1366,8 @@
       common/variables/temp,dt,nstep,nadim,nsnap,gm,enscale
       common/contactmap/iun(MAXUNBO),jun(MAXUNBO),kunbond(MAXUNBO),nQnative_f1,nQnative_f2,nQnative_b
       common/interacparam/ck_r,ck_tht,ck_phi1,ck_phi3,epsil1,epsil2,epsil
-      common/LagrangeData/ga1_f1, ga2_f1, ga1_f2, ga2_f2, ga1_b, ga2_b, gQ0_f1, gQ0_f2, gQ0_b, gr0, gdr, gQ_f, gQ_f1, gQ_f2, gQ_b, eGr
+      common/LagrangeData/ga1_f1, ga2_f1, ga1_f2, ga2_f2, ga1_b, ga2_b,gQ0_f1,&
+        gQ0_f2, gQ0_b, gr0, gdr, gQ_f, gQ_f1, gQ_f2, gQ_b, eGr
       common/LagrangeData2/ga1_w, ga2_w, gQ0_w, gQ_w, alpha_Qw
 
       common/Solvation/k_sol, n_sol, m_sol, epsilon_p, epsilon_pp, pseudoQ_f,pseudoQ_b, dr_sol, ddr_sol
@@ -1639,7 +1644,8 @@
       
 	  common/interacparam/ck_r,ck_tht,ck_phi1,ck_phi3,epsil1,epsil2,epsil
       common/constants/pi,boltz,avsn0,gamma,amass,sigma_ij
-      common/LagrangeData/ga1_f1, ga2_f1, ga1_f2, ga2_f2, ga1_b, ga2_b, gQ0_f1, gQ0_f2, gQ0_b, gr0, gdr, gQ_f, gQ_f1, gQ_f2, gQ_b, eGr
+      common/LagrangeData/ga1_f1, ga2_f1, ga1_f2, ga2_f2, ga1_b, ga2_b,gQ0_f1,&
+            gQ0_f2, gQ0_b, gr0, gdr, gQ_f, gQ_f1, gQ_f2, gQ_b, eGr
       common/LagrangeData2/ga1_w, ga2_w, gQ0_w, gQ_w, alpha_Qw
 
       common/Solvation/k_sol, n_sol, m_sol, epsilon_p, epsilon_pp, pseudoQ_f,pseudoQ_b, dr_sol, ddr_sol
@@ -1772,10 +1778,14 @@
 
 
 	  
-	  if(nadim.eq.0)          write(9,'(''        nadim      gQ_f      gQ_b       gQ_w       E_k       E_pot    E_b      E_bind       eGr         R'')')
-	  if(nadim.eq.0)          write(*,'(''        nadim      gQ_f      gQ_b       gQ_w       E_k       E_pot    E_b      E_bind       eGr         R'')')
-	  if(mod(nadim,nsnap)==0) write(9,'(i13,10f10.3)') nadim, gQ_f, gQ_b, gQ_w, enerkin, e_pot, e_bond_tot, e_unbond_tot, e_bind_tot, eGr, R
-	  if(mod(nadim,nsnap)==0) write(*,'(i13,10f10.3)') nadim, gQ_f, gQ_b, gQ_w, enerkin, e_pot, e_bond_tot, e_unbond_tot, e_bind_tot, eGr, R
+	  if(nadim.eq.0)          write(9,'(''        nadim      gQ_f      gQ_b       &
+        gQ_w       E_k       E_pot    E_b      E_bind       eGr         R'')')
+	  if(nadim.eq.0)          write(*,'(''        nadim      gQ_f      gQ_b &
+        gQ_w       E_k       E_pot    E_b      E_bind       eGr         R'')')
+	  if(mod(nadim,nsnap)==0) write(9,'(i13,10f10.3)') nadim, gQ_f,gQ_b, gQ_w, &
+        enerkin, e_pot, e_bond_tot, e_unbond_tot, e_bind_tot, eGr, R
+	  if(mod(nadim,nsnap)==0) write(*,'(i13,10f10.3)') nadim, gQ_f,gQ_b, gQ_w, &
+        enerkin, e_pot, e_bond_tot, e_unbond_tot, e_bind_tot, eGr, R
 
 	
       return 

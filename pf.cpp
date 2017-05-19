@@ -339,7 +339,7 @@ double pf::Force::fbend(vector<Particle> &particle_list, double &e_bend_tot) {
 
         double theta = acos(costheta);
         double delta = theta - param.theta_nat[i];
-        
+
 
         double tem = 0.0;
         if (i <= param.npart1 - 2) {
@@ -347,7 +347,7 @@ double pf::Force::fbend(vector<Particle> &particle_list, double &e_bend_tot) {
         } else if (i > param.npart1) {
             tem = param.Alpha2;
         }
-        
+
         double e_bend = tem * param.ck_tht * pow(delta, 2);
         double e_bend_drv = -1 * tem * 2 * param.ck_tht * delta;
 
@@ -357,7 +357,7 @@ double pf::Force::fbend(vector<Particle> &particle_list, double &e_bend_tot) {
         double drix = sintinv * (costheta * xij / rij - xkj / rkj) / rij;
         double driy = sintinv * (costheta * yij / rij - ykj / rkj) / rij;
         double driz = sintinv * (costheta * zij / rij - zkj / rkj) / rij;
- 
+
         double drkx = sintinv * (costheta * xkj / rkj - xij / rij) / rkj;
         double drky = sintinv * (costheta * ykj / rkj - yij / rij) / rkj;
         double drkz = sintinv * (costheta * zkj / rkj - zij / rij) / rkj;
@@ -386,7 +386,7 @@ double pf::Force::ftorsion(vector<Particle> &particle_list,
         int j = i + 1;
         int k = i + 2;
         int l = i + 3;
-        
+
         double xij = particle_list[i].x - particle_list[j].x;
         double yij = particle_list[i].y - particle_list[j].y;
         double zij = particle_list[i].z - particle_list[j].z;
@@ -415,41 +415,41 @@ double pf::Force::ftorsion(vector<Particle> &particle_list,
         double xil = ymj * znk - ynk * zmj;
         double yil = zmj * xnk - znk * xmj;
         double zil = xmj * ynk - xnk * ymj;
-        
+
         double rnk = sqrt(pow(xnk, 2) + pow(ynk, 2) + pow(znk, 2));
         double rmj = sqrt(pow(xmj, 2) + pow(ymj, 2) + pow(zmj, 2));
 
-        if (pow(rnk, 2) < eps || pow(rmj, 2) < eps) break; 
+        if (pow(rnk, 2) < eps || pow(rmj, 2) < eps) break;
 
         double phi = (xnk * xmj + ynk * ymj + znk * zmj) / (rnk * rmj);
         if (fabs(phi) > eps1) {
             particle_list[l].x += eps2;
             particle_list[l].y += eps2;
             particle_list[l].z += eps2;
-         
+
             xkl = particle_list[k].x - particle_list[l].x;
             ykl = particle_list[k].y - particle_list[l].y;
             zkl = particle_list[k].z - particle_list[l].z;
 
             rkl = sqrt(pow(xkl, 2) + pow(ykl, 2) + pow(zkl, 2));
 
-            xnk = ykj * zkl - ykl * zkj; 
+            xnk = ykj * zkl - ykl * zkj;
             ynk = zkj * xkl - zkl * xkj;
             znk = xkj * ykl - xkl * ykj;
-         
+
             xil = ymj * znk - ynk * zmj;
             yil = zmj * xnk - znk * xmj;
             zil = xmj * ynk - xnk * ymj;
-         
+
             rnk = sqrt(pow(xnk, 2) + pow(ynk, 2) + pow(znk, 2));
             rmj = sqrt(pow(xmj, 2) + pow(ymj, 2) + pow(zmj, 2));
-     
+
             if (pow(rnk, 2) < eps || pow(rmj, 2) < eps) continue;
             phi = (xnk * xmj + ynk * ymj + znk * zmj) / (rnk * rmj);
-        } 
+        }
 
-	    if(phi > eps1) phi = eps1;
-	    if(phi < -1.0 * eps1) phi = eps1;
+        if(phi > eps1) phi = eps1;
+        if(phi < -1.0 * eps1) phi = eps1;
 
         phi = acos(phi);
         double tmpvalue = xkj * xil + ykj * yil + zkj * zil; 
@@ -464,14 +464,14 @@ double pf::Force::ftorsion(vector<Particle> &particle_list,
         double drv2 = 3.0 * param.ck_phi3 * (4.0 * pow(cos(phi), 2.0) *
                 sin(phi - 3.0 * phi_0) + 3.0 * cos(phi) * sin(3.0 * phi_0) -
                 sin(phi) * cos(3.0 * phi_0));
-        
+
         double e_tors_drv = -(drv1 + drv2);
 
         double tem = 0.0;
-        if(i <= param.npart1 - 3) { 
+        if(i <= param.npart1 - 3) {
             tem = param.Alpha1;
         }
-        else if(i > param.npart1) { 
+        else if(i > param.npart1) {
             tem = param.Alpha2;
         }
         e_tors_tot += tem * e_tors;
@@ -483,9 +483,9 @@ double pf::Force::ftorsion(vector<Particle> &particle_list,
         double driy = ymj * rkj / pow(rmj, 2);
         double driz = zmj * rkj / pow(rmj, 2);
 
-        double drlx = -xnk * rkj / pow(rnk, 2); 
+        double drlx = -xnk * rkj / pow(rnk, 2);
         double drly = -ynk * rkj / pow(rnk, 2);
-        double drlz = -znk * rkj / pow(rnk, 2); 
+        double drlz = -znk * rkj / pow(rnk, 2);
 
         double drjx = (rijrkj - 1) * drix - rklrkj * drlx;
         double drjy = (rijrkj - 1) * driy - rklrkj * drly;
@@ -518,10 +518,10 @@ double pf::Force::ftorsion(vector<Particle> &particle_list,
 double pf::Force::funbond(vector<Particle> &particle_list, double &e_unbond_tot,
         double &e_bind_tot) {
 
-    if(param.Is_Solvation == 0) { 
+    if(param.Is_Solvation == 0) {
         funbond_without(particle_list, e_unbond_tot, e_bind_tot);
     }
-    else if(param.Is_Solvation == 1) { 
+    else if(param.Is_Solvation == 1) {
         funbond_with(particle_list, e_unbond_tot, e_bind_tot);
     }
     return 0;
@@ -551,7 +551,7 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
     double zij = 0.0;
     double rij = 0.0;
     double tem = 0.0;
-    // !  unbonded force for A:      
+    // !  unbonded force for A:
     for (int k = 0; k < param.nunbond; k++) {
         int i = param.iun[k];
         int j = param.jun[k];
@@ -570,7 +570,7 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
                 || (i > param.npartM && j > param.npartM)) continue;
 
         if (param.kunbond[k] == 1) {
-            if (rij / param.kunbond[k] - param.gr0 < 8 * param.gdr) { 
+            if (rij / param.kunbond[k] - param.gr0 < 8 * param.gdr) {
                 tem = 1 / (1 + exp((rij / (param.runbond_nat[k] +
                                     param.ddr_sol) - param.gr0) / param.gdr));
                 if (i <= param.npart1 && j <= param.npart1) {
@@ -621,11 +621,11 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
             }
             e_unbond_drv = -e_unbond_drv;
 
-            if(i <= param.npart1 && j <= param.npart1) { 
+            if(i <= param.npart1 && j <= param.npart1) {
                 e_unbond = param.Alpha1 * e_unbond;
                 e_unbond_drv = param.Alpha1 * e_unbond_drv;
             }
-            else if(i <= param.npart1 && j > param.npart1) { 
+            else if(i <= param.npart1 && j > param.npart1) {
                 e_unbond = param.Beta * e_unbond;
                 e_unbond_drv = param.Beta * e_unbond_drv;
             }
@@ -634,22 +634,22 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
                 e_unbond_drv = param.Alpha2 * e_unbond_drv;
             }
         } else if (param.kunbond[k] == 2) {
-            if((rij / param.CritR_non - param.gr0) < 8 * param.gdr) { 
+            if((rij / param.CritR_non - param.gr0) < 8 * param.gdr) {
                 tem = 1 / (1 +
                         exp((rij / param.CritR_non - param.gr0) / param.gdr));
-                if(i <= param.npart1 && j > param.npart1) { 
+                if(i <= param.npart1 && j > param.npart1) {
                     param.gQ_non_b = param.gQ_non_b + tem;
-                } else if (param.iFlagMov == 2 || j <= param.npart1) { 
+                } else if (param.iFlagMov == 2 || j <= param.npart1) {
                     param.gQ_non_f = param.gQ_non_f + tem;
-                } 
+                }
             }
             double rij12 = pow((param.sigma_ij / rij), 12.0);
             double rHP = exp(-1 * pow((rij - param.CritR_non), 2) / 2);
             double Atem = 0.0;
-            if(i <= param.npart1 && j <= param.npart1) { 
+            if(i <= param.npart1 && j <= param.npart1) {
                 Atem = param.Alpha1;
             }
-            else if(i <= param.npart1 && j > param.npart1) { 
+            else if(i <= param.npart1 && j > param.npart1) {
                 // ! Atem = sqrt(Alpha1*Alpha2)
                 Atem = param.Beta;
             }
@@ -663,10 +663,10 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
         } else {
             double rij12 = pow((param.sigma_ij / rij), 12.0);
             double Atem = 0.0;
-            if(i <= param.npart1 && j <= param.npart1) { 
+            if(i <= param.npart1 && j <= param.npart1) {
                 Atem = param.Alpha1;
             }
-            else if (i <= param.npart1 && j > param.npart1) { 
+            else if (i <= param.npart1 && j > param.npart1) {
                 // ! Atem = sqrt(Alpha1*Alpha2)
                 Atem = param.Beta;
             }
@@ -679,13 +679,13 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
 
         e_unbond_tot += e_unbond;
         if(i <= param.npart1 && j > param.npart1) e_bind_tot += e_unbond;
-          
-        if(i <= param.npartM) { 
+
+        if(i <= param.npartM) {
             particle_list[i].fxun += e_unbond_drv * xij / rij;
             particle_list[i].fyun += e_unbond_drv * yij / rij;
             particle_list[i].fzun += e_unbond_drv * zij / rij;
         }
-        if(j <= param.npartM) { 
+        if(j <= param.npartM) {
           particle_list[j].fxun -= e_unbond_drv * xij / rij;
           particle_list[j].fyun -= e_unbond_drv * yij / rij;
           particle_list[j].fzun -= e_unbond_drv * zij / rij;
@@ -695,7 +695,7 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
     if (param.iFlagMov != 2) param.gQ_f2 = 0;
     param.gQ_f = param.gQ_f1 + param.gQ_f2;
 
-    // !  Lagrange constrant potential: 
+    // !  Lagrange constrant potential:
     // !  Fixed B
     double eGr_f1 = param.ga1_f1 * (param.gQ_f1 - param.gQ0_f1) +
         param.ga2_f1 * pow(param.gQ_f1 - param.gQ0_f1, 2);
@@ -708,14 +708,14 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
         param.ga2_w * pow(param.gQ_w - param.gQ0_w, 2);
     double eGr = eGr_f + eGr_b + eGr_w;
 
-    if (eGr < 1e-5 && eGr > -1e-5) return 0; 
+    if (eGr < 1e-5 && eGr > -1e-5) return 0;
 
     for (int k = 0; k < param.nunbond; k++) {
         int i = param.iun[k];
         int j = param.jun[k];
 
         double e_unbond_drv = 0;
-        
+
         if (param.kunbond[k] == 1) {
         xij = particle_list[i].x - particle_list[j].x;
         yij = particle_list[i].y - particle_list[j].y;
@@ -738,7 +738,7 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
 
         if ((rij / (param.runbond_nat[k] + param.ddr_sol) - param.gr0) <
                 -8 * param.gdr || (rij / (param.runbond_nat[k] + param.ddr_sol)
-                    - param.gr0) > 8 * param.gdr) { 
+                    - param.gr0) > 8 * param.gdr) {
             e_unbond_drv = 0.0;
         } else {
             tem = exp((rij / (param.runbond_nat[k] + param.ddr_sol) - param.gr0)
@@ -747,12 +747,12 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
                 ((param.runbond_nat[k] + param.ddr_sol) * param.gdr);
         }
 
-        if (i <= param.npartM) { 
+        if (i <= param.npartM) {
             particle_list[i].fxun += e_unbond_drv * xij / rij;
             particle_list[i].fyun += e_unbond_drv * yij / rij;
             particle_list[i].fzun += e_unbond_drv * zij / rij;
         }
-        if (j <= param.npartM) { 
+        if (j <= param.npartM) {
             particle_list[j].fxun -= e_unbond_drv * xij / rij;
             particle_list[j].fyun -= e_unbond_drv * yij / rij;
             particle_list[j].fzun -= e_unbond_drv * zij / rij;
@@ -789,30 +789,30 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
     double tem = 0.0;
     double e_unbond = 0;
     double e_unbond_drv = 0;
-    // !  unbonded force for A:      
+    // !  unbonded force for A:
     for (int k = 0; k < param.nunbond; k++) {
         int i = param.iun[k];
         int j = param.jun[k];
 
-        xij = (particle_list[i].x - particle_list[j].x);      
-        yij = (particle_list[i].y - particle_list[j].y);      
-        zij = (particle_list[i].z - particle_list[j].z);      
+        xij = (particle_list[i].x - particle_list[j].x);
+        yij = (particle_list[i].y - particle_list[j].y);
+        zij = (particle_list[i].z - particle_list[j].z);
 
         // ! cancel for Q_w
         // !      if ( kunbond(k) == 1 .and. rij >= (2*runbond_nat(k)+3.0) .or. &
         if ((param.kunbond[k] == 2 && rij >= (2 * param.CritR_non + 3.0))
                 || (param.kunbond[k] == 0 && rij >= (1.8 * param.sigma_ij))
                 || (i > param.npartM && j > param.npartM)) continue;
-        
-        if (param.kunbond[k] == 1) { 
-            if((rij / param.runbond_nat[k] - param.gr0) < 8 * param.gdr) { 
+
+        if (param.kunbond[k] == 1) {
+            if((rij / param.runbond_nat[k] - param.gr0) < 8 * param.gdr) {
                 tem = 1 / (1 + exp((rij / param.runbond_nat[k] - param.gr0) /
                             param.gdr));
-                if (i <= param.npart1 && j <= param.npart1) { 
+                if (i <= param.npart1 && j <= param.npart1) {
                     param.gQ_f1 += tem;
-                } else if (i <= param.npart1 && j > param.npart1) { 
+                } else if (i <= param.npart1 && j > param.npart1) {
                     param.gQ_b += tem;
-                } else if (param.iFlagMov == 2) { 
+                } else if (param.iFlagMov == 2) {
                     param.gQ_f2 += tem;
                 }
             } 
@@ -821,41 +821,41 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
             }
             double rij10 = pow((param.runbond_nat[k] / rij), 10.0);
             double rij12 = pow((param.runbond_nat[k] / rij), 12.00);
-            if (i <= param.npart1 && j <= param.npart1) { 
+            if (i <= param.npart1 && j <= param.npart1) {
                 e_unbond = param.Alpha1 * param.epsil1 * (5 * rij12 -
                         6 * rij10);
                 e_unbond_drv = param.Alpha1 * 60 * param.epsil1 * (rij12 -
                         rij10) / rij;
             }
-            else if (i <= param.npart1 && j > param.npart1) { 
+            else if (i <= param.npart1 && j > param.npart1) {
                 e_unbond = param.Beta * param.epsil1 * (5 * rij12 - 6 * rij10);
                 e_unbond_drv = param.Beta * 60 * param.epsil1 * (rij12 -
                         rij10) / rij;
             }
-            else if (param.iFlagMov == 2) { 
+            else if (param.iFlagMov == 2) {
                 e_unbond = param.Alpha2 * param.epsil1 * ( 5 * rij12 -
                         6 * rij10 );
                 e_unbond_drv = param.Alpha2 * 60 * param.epsil1 * ( rij12 -
                         rij10 ) / rij;
             }
         } else if (param.kunbond[k] == 2) {
-            if ((rij / param.CritR_non - param.gr0) < 8 * param.gdr) { 
+            if ((rij / param.CritR_non - param.gr0) < 8 * param.gdr) {
                 tem = 1 / (1 + exp((rij / param.CritR_non - param.gr0) /
                             param.gdr));
-                if (i <= param.npart1 && j > param.npart1) { 
+                if (i <= param.npart1 && j > param.npart1) {
                     param.gQ_non_b += tem;
                 }
-                else if (param.iFlagMov == 2 || j <= param.npart1) { 
+                else if (param.iFlagMov == 2 || j <= param.npart1) {
                     param.gQ_non_f += tem;
                 }
             }
 
             double rij12 = pow(param.sigma_ij / rij, 12.0);
-            double rHP  = exp(-1 * pow(rij - param.CritR_non, 2) / 2); 
+            double rHP  = exp(-1 * pow(rij - param.CritR_non, 2) / 2);
             double Atem = 0.0;
-            if (i <= param.npart1 && j <= param.npart1) { 
+            if (i <= param.npart1 && j <= param.npart1) {
                 Atem = param.Alpha1;
-            } else if (i <= param.npart1 && j > param.npart1) { 
+            } else if (i <= param.npart1 && j > param.npart1) {
                 // ! Atem = sqrt(Alpha1*Alpha2)
                 Atem = param.Beta;
             } else {
@@ -864,13 +864,13 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
             e_unbond = Atem * param.epsil2 * rij12 - param.Delta *
                 param.epsil1 * rHP;
             e_unbond_drv = Atem * 12 * param.epsil2 * rij12 / rij -
-                param.Delta * param.epsil1 * rHP * (rij - param.CritR_non);    
+                param.Delta * param.epsil1 * rHP * (rij - param.CritR_non);
         } else {
             double rij12 = pow(param.sigma_ij / rij, 12.0);
             double Atem = 0.0;
-            if (i <= param.npart1 && j <= param.npart1) { 
+            if (i <= param.npart1 && j <= param.npart1) {
                 Atem = param.Alpha1;
-            } else if (i <= param.npart1 && j > param.npart1) { 
+            } else if (i <= param.npart1 && j > param.npart1) {
                 // ! Atem = sqrt(Alpha1*Alpha2)
                 Atem = param.Beta;
             } else {
@@ -883,12 +883,12 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
         e_unbond_tot += e_unbond;
         if (i <= param.npart1 && j > param.npart1) e_bind_tot += e_unbond;
 
-        if (i <= param.npartM) { 
+        if (i <= param.npartM) {
             particle_list[i].fxun += e_unbond_drv * xij / rij;
             particle_list[i].fyun += e_unbond_drv * yij / rij;
             particle_list[i].fzun += e_unbond_drv * zij / rij;
         }
-        if (j <= param.npartM) { 
+        if (j <= param.npartM) {
             particle_list[j].fxun -= e_unbond_drv * xij / rij;
             particle_list[j].fyun -= e_unbond_drv * yij / rij;
             particle_list[j].fzun -= e_unbond_drv * zij / rij;
@@ -898,7 +898,7 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
     if (param.iFlagMov != 2) param.gQ_f2 = 0;
     param.gQ_f = param.gQ_f1 + param.gQ_f2;
 
-    // !  Lagrange constrant potential: 
+    // !  Lagrange constrant potential:
     // !  Fixed B
     param.gQ_w = param.gQ_b - param.alpha_Qw * sum_rij;
     double eGr_f1 = param.ga1_f1 * (param.gQ_f1 - param.gQ0_f1) +
@@ -919,17 +919,17 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
         int j = param.jun[k];
 
         e_unbond_drv = 0;
-        if (param.kunbond[k] == 1) { 
+        if (param.kunbond[k] == 1) {
             xij = particle_list[i].x - particle_list[j].x;
             yij = particle_list[i].y - particle_list[j].y;
             zij = particle_list[i].z - particle_list[j].z;
             rij = sqrt(pow(xij, 2) + pow(yij, 2) + pow(zij, 2));
 
-            if (i <= param.npart1 && j <= param.npart1) { 
+            if (i <= param.npart1 && j <= param.npart1) {
                 e_unbond_drv = param.ga1_f1 + 2 * param.ga2_f1 * (param.gQ_f1 -
                         param.gQ0_f1);
             }
-            else if(i <= param.npart1 && j > param.npart1) { 
+            else if(i <= param.npart1 && j > param.npart1) {
                 e_unbond_drv = param.ga1_b + 2 * param.ga2_b *
                     (param.gQ_b - param.gQ0_b ) + param.ga1_w +
                     2 * param.ga2_w * (param.gQ_w - param.gQ0_w);
@@ -940,30 +940,30 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
 
             if ((rij / (param.runbond_nat[k] + param.ddr_sol) - param.gr0) <
                     -8 * param.gdr || (rij / (param.runbond_nat[k] +
-                            param.ddr_sol) - param.gr0) > 8 * param.gdr) { 
+                            param.ddr_sol) - param.gr0) > 8 * param.gdr) {
                 e_unbond_drv = 0.0;
             } else {
                 tem = exp((rij / (param.runbond_nat[k] + param.ddr_sol) -
                             param.gr0) / param.gdr);
                 e_unbond_drv = e_unbond_drv * tem / pow(1 + tem, 2) /
                     ((param.runbond_nat[k] + param.ddr_sol) * param.gdr);
-            } 
+            }
 
-            if (i <= param.npart1 && j > param.npart1) { 
+            if (i <= param.npart1 && j > param.npart1) {
                 e_unbond_drv = e_unbond_drv + param.alpha_Qw * (param.ga1_w +
                         2 * param.ga2_w * (param.gQ_w - param.gQ0_w));
             }
 
-            if (i <= param.npartM) { 
+            if (i <= param.npartM) {
                 particle_list[i].fxun += e_unbond_drv * xij / rij;
                 particle_list[i].fyun += e_unbond_drv * yij / rij;
                 particle_list[i].fzun += e_unbond_drv * zij / rij;
             }
-            if (j <= param.npartM) { 
+            if (j <= param.npartM) {
                 particle_list[j].fxun -= e_unbond_drv * xij / rij;
                 particle_list[j].fyun -= e_unbond_drv * yij / rij;
                 particle_list[j].fzun -= e_unbond_drv * zij / rij;
-            } 
+            }
         }
     }
 
@@ -1042,7 +1042,7 @@ int pf::Simulation::intpar(double &enerkin) {
 
     // !  initialize histogram data
     for (int i = 0; i < param.nbin_f; i++) {
-	    statis.PFbin[i] = 0.0;
+        statis.PFbin[i] = 0.0;
         for (int j = 0; j < param.nbin_b; j++) {
             statis.PBbin[j] = 0.0;
             statis.PFBbin[i][j] = 0.0;
@@ -1124,12 +1124,12 @@ int pf::Simulation::formate_output_filenames() {
     string d_mol_filename = "d" + param.pdb_filename + ".mol";
     output_filenames[22] = d_mol_filename;
     // open (22,file=filename2(1:LF2), status = 'replace' )
-    // !  file to save the output conformation coordinate for further 
+    // !  file to save the output conformation coordinate for further
     // simulation, d*.X 
     string d_mol_dat_filename = "d" + param.pdb_filename + ".mol.dat";
     output_filenames[27] = d_mol_dat_filename;
     // open(27,file=filename2(1:LF2), status = 'replace' )
-    // !  file to save the output conformation coordinate for further 
+    // !  file to save the output conformation coordinate for further
     // simulation, d*.X 
     string d_X_filename = "d" + param.pdb_filename + ".X";
     output_filenames[26] = d_X_filename;
@@ -1142,32 +1142,32 @@ int pf::Simulation::formate_output_filenames() {
     // !  file to save Histogram P(Q_b,E_b): (QbEbHist*)
     string QbEbHist_filename = "QbEbHist" + param.pdb_filename;
     output_filenames[29] = QbEbHist_filename;
-    // if(iFlagMov.gt.0 .and. IsEbbin.eq.1) open (29,file=filename2(1:LF2), 
+    // if(iFlagMov.gt.0 .and. IsEbbin.eq.1) open (29,file=filename2(1:LF2),
     // status = 'replace' )
     // !  file to save Histogram P(Q_w): (QwHist*)
     string QwHist_filename = "QwHist" + param.pdb_filename;
     output_filenames[30] = QwHist_filename;
-    // if(iFlagMov.gt.0 .and. IsWbin.eq.1) open (30,file=filename2(1:LF2), 
+    // if(iFlagMov.gt.0 .and. IsWbin.eq.1) open (30,file=filename2(1:LF2),
     // status = 'replace' )
     // !  file to save Histogram P(Q_w,Q_b): (QwQbHist*)
     string QwQbHist_filename = "QwQbHist" + param.pdb_filename;
     output_filenames[31] = QwQbHist_filename;
-    // if(iFlagMov.gt.0 .and. IsWbin.eq.1) open (31,file=filename2(1:LF2), 
+    // if(iFlagMov.gt.0 .and. IsWbin.eq.1) open (31,file=filename2(1:LF2),
     // status = 'replace' )
     // !  file to save Histogram P(Q_w,R): (QwRHist*)
     string QwRHist_filename = "QwRHist" + param.pdb_filename;
     output_filenames[32] = QwRHist_filename;
-    // if(iFlagMov.gt.0 .and. IsWbin.eq.1) open (32,file=filename2(1:LF2), 
+    // if(iFlagMov.gt.0 .and. IsWbin.eq.1) open (32,file=filename2(1:LF2),
     // status = 'replace' )
     // !  file to save Histogram P(Q_w,E_b): (QwEbHist*)
     string QwEbHist_filename = "QwEbHist" + param.pdb_filename;
     output_filenames[33] = QwEbHist_filename;
-    // if(iFlagMov.gt.0 .and. IsWbin.eq.1) open (33,file=filename2(1:LF2), 
+    // if(iFlagMov.gt.0 .and. IsWbin.eq.1) open (33,file=filename2(1:LF2),
     // status = 'replace' )
     // !  file to save Histogram P(Q_w,Q_f1): (QwEbHist*)
     string QwQfHist_filename = "QwQfHist" + param.pdb_filename;
     output_filenames[34] = QwQfHist_filename;
-    // if(iFlagMov.gt.0 .and. IsWbin.eq.1) open (34,file=filename2(1:LF2), 
+    // if(iFlagMov.gt.0 .and. IsWbin.eq.1) open (34,file=filename2(1:LF2),
     // status = 'replace' )
 
     return 0;
@@ -1181,18 +1181,18 @@ int pf::Simulation::output_info() {
     cout << setw(50) << "Number of moving chains (iFlagMov):" << param.iFlagMov
         << endl;
     cout << setw(50) << "Total length (nparttol):" << param.nparttol << endl;
-    cout << setw(50) << "Chain-Residue number gap (nResGap):" << param.nResGap 
+    cout << setw(50) << "Chain-Residue number gap (nResGap):" << param.nResGap
         << endl;
     cout << setw(50) << "interaction strength epsilon:" << param.epsil << endl;
-    cout << setw(50) << "interaction strength epsilon_1:" << param.epsil1 << 
+    cout << setw(50) << "interaction strength epsilon_1:" << param.epsil1 <<
         endl;
-    cout << setw(50) << "interaction strength epsilon_2:" << param.epsil2 << 
+    cout << setw(50) << "interaction strength epsilon_2:" << param.epsil2 <<
         endl;
     cout << setw(50) << "interaction strength ck_r:" << param.ck_r << endl;
     cout << setw(50) << "interaction strength ck_tht:" << param.ck_tht << endl;
-    cout << setw(50) << "interaction strength ck_phi1:" << param.ck_phi1 << 
+    cout << setw(50) << "interaction strength ck_phi1:" << param.ck_phi1 <<
         endl;
-    cout << setw(50) << "interaction strength ck_phi3:" << param.ck_phi3 << 
+    cout << setw(50) << "interaction strength ck_phi3:" << param.ck_phi3 <<
         endl;
     cout << setw(50) << "interaction strength scaling param:" << param.enscale
         << endl;
@@ -1277,11 +1277,11 @@ int pf::Simulation::output_info() {
    cout << setw(50) << "Qw-Histogram vbin0:" << param.vWbin0 << endl;
    cout << setw(50) << "cri_Qb for Qw-Histogram:" << param.cri_Qb << endl;
    cout << setw(50) << "periodic boundary condiction size:" << param.pL << endl;
-   cout << setw(50) << "periodic boundary condiction buffer:" << param.dl << 
+   cout << setw(50) << "periodic boundary condiction buffer:" << param.dl <<
        endl;
-   cout << setw(50) << "Ratio of intrachain interaction 1:" << param.Alpha1 << 
+   cout << setw(50) << "Ratio of intrachain interaction 1:" << param.Alpha1 <<
        endl;
-   cout << setw(50) << "Ratio of intrachain interaction 2:" << param.Alpha2 << 
+   cout << setw(50) << "Ratio of intrachain interaction 2:" << param.Alpha2 <<
        endl;
    cout << setw(50) << "Ratio of interchain interaction:" << param.Beta << endl;
    cout << setw(50) << "Delta:" << param.Delta << endl;
@@ -1338,7 +1338,7 @@ int pf::Simulation::read_appNCS(string filename) {
             if (item2 < param.npart1 + param.nResGap) {
                 cerr << "contact map error 5.\n";
             }
-		    item2 -= param.nResGap;
+            item2 -= param.nResGap;
         }
         if (item1 <= 0 || item1 > param.nparttol) {
             cerr << "contact map error 1.\n";
@@ -1499,16 +1499,16 @@ int pf::Simulation::start_simulation() {
             for (int j = 0; j < 1/*param.nstep*/; j++) {
                 param.nadim += 1;
                 verlet(enerkin, e_pot);
-            
+
                 // !-------------save data for purpose of restore-------------
-                // Because nadim_old and nOutGap_old is needed in the next 
+                // Because nadim_old and nOutGap_old is needed in the next
                 // "if statement", so I bring them out of the "if statement"
                 int nadim_old = param.nadim;
                 int nOutGap_old = nOutputGap;
-                // if(mod(nadim,nsnap).eq.0.and.vx(1).ge.-1e6.and.vx(1).le.1e6) 
+                // if(mod(nadim,nsnap).eq.0.and.vx(1).ge.-1e6.and.vx(1).le.1e6)
                 // because particle_list's index startswith 0, so v(1)-->[0]
                 if (param.nadim % param.nsnap == 0
-                        && particle_list[0].vx >= -1e6 
+                        && particle_list[0].vx >= -1e6
                         && particle_list[0].vx <= 1e6) {
                     for (int kl = 0; kl < param.nparttol; kl++) {
                         particle_list[kl].xsave = particle_list[kl].x;
@@ -1531,7 +1531,7 @@ int pf::Simulation::start_simulation() {
                     InitVel(enerkin);
                     force.force(particle_list, e_pot, e_unbond_tot, e_bind_tot,
                             e_tors_tot, e_bend_tot, e_bond_tot);
-                    // Related to Randon number generator 
+                    // Related to Randon number generator
                     RANTERM();
 
                     for (int kl = 0; kl < param.npartM; kl++) {
@@ -1757,7 +1757,7 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot) {
 }
 
 int pf::Simulation::pbc_shift() {
-	// fortran code: if(npart1.le.0) goto 400
+    // fortran code: if(npart1.le.0) goto 400
     if(param.npart1 <= 0)
         return 0;
 
@@ -1779,25 +1779,25 @@ int pf::Simulation::pbc_shift() {
     param.R = sqrt(pow(x00, 2) + pow(y00, 2) + pow(z00, 2));
 
     // x coordinate setting
-	int ixflag = 0;
-	if (x00 > ( param.pL / 2.0 + param.dl)) {
+    int ixflag = 0;
+    if (x00 > ( param.pL / 2.0 + param.dl)) {
         ixflag = 1;
         for (int i = 0; i < param.npart1; i++) {
             particle_list[i].x -= param.pL;
         }
     }
     // fortran code: if ( ixflag == 1 ) goto 111
-	if ( ixflag != 1 && x00 < (-1 * param.pL / 2.0 - param.dl)) {
+    if ( ixflag != 1 && x00 < (-1 * param.pL / 2.0 - param.dl)) {
         for (int i = 0; i < param.npart1; i++) {
             particle_list[i].x += param.pL;
         }
     }
 
     // y coordinate setting
-	int iyflag = 0;
+    int iyflag = 0;
     if (y00 > (param.pL / 2.0 + param.dl)) {
-	    iyflag = 1;
-	    for (int i = 0; i < param.npart1; i++) {
+        iyflag = 1;
+        for (int i = 0; i < param.npart1; i++) {
             particle_list[i].y -= param.pL;
         }
     }
@@ -1805,13 +1805,13 @@ int pf::Simulation::pbc_shift() {
         for (int i = 0; i < param.npart1; i++) {
             particle_list[i].y += param.pL;
         }
-    } 
+    }
 
     // z coordinate setting
-	int izflag = 0;
+    int izflag = 0;
     if (z00 > (param.pL / 2.0 + param.dl)) {
-	    izflag = 1;
-	    for (int i = 0; i < param.npart1; i++) {
+        izflag = 1;
+        for (int i = 0; i < param.npart1; i++) {
             particle_list[i].z -= param.pL;
         }
     }
@@ -1819,7 +1819,7 @@ int pf::Simulation::pbc_shift() {
         for (int i = 0; i < param.npart1; i++) {
             particle_list[i].z += param.pL;
         }
-    } 
+    }
     return 0;
 }
 
@@ -1833,7 +1833,7 @@ int pf::Simulation::output_conformation(int &nOutputGap, int &nOutputCount) {
                 "nOutputCount,  nadim,   gQ_f,     gQ_b,     R");
     }
 
-    if (nOutputCount < param.nConformOutput && param.nadim >= param.nOutput0 
+    if (nOutputCount < param.nConformOutput && param.nadim >= param.nOutput0
             && nOutputGap >= param.ndOutput && param.gQ_f1 >= param.outQf1_i
             && param.gQ_f1 <= param.outQf1_f && param.gQ_f2 >= param.outQf2_i
             && param.gQ_f2 <= param.outQf2_f && param.gQ_b >= param.outQb_i
@@ -1846,7 +1846,7 @@ int pf::Simulation::output_conformation(int &nOutputGap, int &nOutputCount) {
         log.info(output_filenames[27], msg);
 
         for (int j = 0; j < param.nparttol; j++) {
-            msg = to_string(particle_list[j].x) + '\t' + 
+            msg = to_string(particle_list[j].x) + '\t' +
                 to_string(particle_list[j].y) + '\t' +
                 to_string(particle_list[j].z);
             log.info(output_filenames[26], msg + '\n');
@@ -2051,7 +2051,7 @@ int pf::Simulation::write_histogram() {
             }
             for (int k = 0; k < param.nEbbin; k++) {
 		        if (statis.PQwEbbin[i][k][0] > 1e-5 ||
-                        statis.PQwEbbin[i][k][1] > 1e-5) { 
+                        statis.PQwEbbin[i][k][1] > 1e-5) {
                     msg = log.format("%8.2f %8.2f, %12.1f %12.1f",
                             param.vWbin0 + (i + 1 - 0.5) * param.dWbin,
                             param.vEbbin0 + (k + 1 - 0.5) * param.dEbbin,
@@ -2060,13 +2060,13 @@ int pf::Simulation::write_histogram() {
                 }
             }
             for (int j = 0; j < param.nbin_f; j++) {
-		        if (statis.PQwQfbin[i][j] > 1e-5) {
+                if (statis.PQwQfbin[i][j] > 1e-5) {
                     msg = log.format("%8.2f %8.2f, %12.1f %12.1f",
                             param.vWbin0 + (i + 1 - 0.5) * param.dWbin,
                             param.vbin0 + (j + 1 - 0.5) * param.dbin_f,
                             statis.PQwQfbin[i][j]);
                     log.info(output_filenames[34], msg);
-                } 
+                }
             }
         } // 150 continue
     } // 180 continue
@@ -2100,9 +2100,9 @@ int pf::Simulation::origin_adjust() {
 
 
     for (int j = 0; j < param.nparttol; j++) {
-	    particle_list[j].x -= x00;
-	    particle_list[j].y -= y00;
-	    particle_list[j].z -= z00;
+        particle_list[j].x -= x00;
+        particle_list[j].y -= y00;
+        particle_list[j].z -= z00;
     }
 
     return 0;
@@ -2166,7 +2166,7 @@ double pf::Simulation::rannyu() {
     // TL: Is there any relationship between m/l(4) with m/l1-4?
     double ooto12 = 1.0 / 4096.0;
     int itwo12 = 4096;
-    // Initialize m1-4 l1-4 in setrn() 
+    // Initialize m1-4 l1-4 in setrn()
     // int m1 = 0, m2 = 0, m3 = 0, m4 = 0, l1 = 0, l2 = 0, l3 = 0, l4 = 0;
     //////////////////Body of rnyubd()/////////////////////
     m[0] = 502, m[1] = 1521, m[2] = 4071, m[3] = 2107;
