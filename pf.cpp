@@ -271,7 +271,6 @@ int pf::Force::force(vector<Particle> &particle_list, double &e_pot,
         particle_list[i].fz += (particle_list[i].fzr + particle_list[i].fzth +
                 particle_list[i].fzph + particle_list[i].fzun);
     }
-
     e_pot = e_bond_tot + e_bend_tot + e_tors_tot + e_unbond_tot;
     return 0;
 }
@@ -283,14 +282,11 @@ double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot) {
         double xij = particle_list[i].x - particle_list[j].x;
         double yij = particle_list[i].y - particle_list[j].y;
         double zij = particle_list[i].z - particle_list[j].z;
-
         double rij = sqrt(pow(xij, 2) + pow(yij, 2) + pow(zij, 2));
 
         if (rij < eps1) break;
 
         double e_bond = param.ck_r * pow(rij - param.rbond_nat[i], 2);
-        cerr << rij << " " << param.rbond_nat[i] << endl;
-        cerr << e_bond << endl;
         e_bond_tot += e_bond;
         double e_bond_drv =
             -2 * param.ck_r * (rij - param.rbond_nat[i]);
@@ -400,9 +396,9 @@ double pf::Force::ftorsion(vector<Particle> &particle_list,
         double zkl = particle_list[k].z - particle_list[l].z;
 
         // rij is never used
-        // double rij = sqrt(pow(xij, 2) + pow(xij, 2) + pow(xij, 2));
-        double rkj = sqrt(pow(yij, 2) + pow(yij, 2) + pow(yij, 2));
-        double rkl = sqrt(pow(zij, 2) + pow(zij, 2) + pow(zij, 2));
+        //double rij = sqrt(pow(xij, 2) + pow(yij, 2) + pow(zij, 2));
+        double rkj = sqrt(pow(xkj, 2) + pow(ykj, 2) + pow(zkj, 2));
+        double rkl = sqrt(pow(xkl, 2) + pow(ykl, 2) + pow(zkl, 2));
 
         double xmj = yij * zkj - ykj * zij;
         double ymj = zij * xkj - zkj * xij;
@@ -553,8 +549,8 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
     double tem = 0.0;
     // !  unbonded force for A:
     for (int k = 0; k < param.nunbond; k++) {
-        int i = param.iun[k];
-        int j = param.jun[k];
+        int i = param.iun[k] - 1;
+        int j = param.jun[k] - 1;
 
         double e_unbond = 0;
         double e_unbond_drv = 0;
@@ -711,8 +707,8 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
     if (eGr < 1e-5 && eGr > -1e-5) return 0;
 
     for (int k = 0; k < param.nunbond; k++) {
-        int i = param.iun[k];
-        int j = param.jun[k];
+        int i = param.iun[k] - 1;
+        int j = param.jun[k] - 1;
 
         double e_unbond_drv = 0;
 
@@ -791,8 +787,8 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
     double e_unbond_drv = 0;
     // !  unbonded force for A:
     for (int k = 0; k < param.nunbond; k++) {
-        int i = param.iun[k];
-        int j = param.jun[k];
+        int i = param.iun[k] - 1;
+        int j = param.jun[k] - 1;
 
         xij = (particle_list[i].x - particle_list[j].x);
         yij = (particle_list[i].y - particle_list[j].y);
@@ -915,8 +911,8 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
     if(param.eGr < 1e-5 && param.eGr > -1e-5) return 0;
 
     for (int k = 0; k < param.nunbond; k++) {
-        int i = param.iun[k];
-        int j = param.jun[k];
+        int i = param.iun[k] - 1;
+        int j = param.jun[k] - 1;
 
         e_unbond_drv = 0;
         if (param.kunbond[k] == 1) {
@@ -1440,7 +1436,7 @@ int pf::Simulation::start_simulation() {
     // !===================== simulation start =====================
     // outermost loop
     // fortran code: do 2000 nConfcount=nCon0+1, nConform
-    for (int nConfcount = param.nCon0; nConfcount <= param.nConform;
+    for (int nConfcount = param.nCon0; nConfcount < param.nConform;
             nConfcount++) {
         // read the intial conformation
         // (in word, reverse initial and native conformation filenames) 
@@ -1456,12 +1452,11 @@ int pf::Simulation::start_simulation() {
         // Fortran code: do 1500 nRuncount=1, nRunConf
         for (int nRuncount = 0; nRuncount < param.nRunConf; nRuncount++) {
             // copy intial conformation to native conformation
-            for (int j = 0; j < particle_list.size(); j++) {
+            for (int j = 0; j < param.nparttol; j++) {
                 particle_list[j].x = particle_list[j].xinit;
                 particle_list[j].y = particle_list[j].yinit;
                 particle_list[j].z = particle_list[j].zinit;
             }
-
             origin_adjust();
             InitVel(enerkin);
             // The following variable is used before definition, fortran code:
@@ -1496,7 +1491,7 @@ int pf::Simulation::start_simulation() {
             param.nadim = -1; // fortran code: nadim=-1
             // ! main dynamics cycle
             // fortran code: do 100 nadim_new=0,nstep
-            for (int j = 0; j < 1/*param.nstep*/; j++) {
+            for (int j = 0; j < param.nstep; j++) {
                 param.nadim += 1;
                 verlet(enerkin, e_pot);
 
@@ -2130,8 +2125,8 @@ int pf::Simulation::InitVel(double &enerkin) {
 
     for (int i = 0; i < param.npartM; i++) {
         particle_list[i].vx -= sumvx;
-        particle_list[i].vx -= sumvx;
-        particle_list[i].vx -= sumvx;
+        particle_list[i].vy -= sumvy;
+        particle_list[i].vz -= sumvz;
         enerkin += (pow(particle_list[i].vx, 2) + pow(particle_list[i].vy, 2)
                     + pow(particle_list[i].vz, 2));
     }
@@ -2273,13 +2268,13 @@ int pf::Simulation::nativeinformation() {
     // (标记两个残基之间是否有相互作用)
     double xij, yij, zij;
     for (int k = 0; k < param.nunbond; k++) {
-        int i = param.iun[k];
-        int j = param.jun[k];
+        int i = param.iun[k] - 1;
+        int j = param.jun[k] - 1;
         // fortran code: xij=(x(i)-x(j)) yij=(y(i)-y(j)) zij=(z(i)-z(j))
         // Because appNCS.dat' data starts from 1, i-->i-1, j-->j-1
-        xij = particle_list[i - 1].x - particle_list[j - 1].x;
-        yij = particle_list[i - 1].y - particle_list[j - 1].y;
-        zij = particle_list[i - 1].z - particle_list[j - 1].z;
+        xij = particle_list[i].x - particle_list[j].x;
+        yij = particle_list[i].y - particle_list[j].y;
+        zij = particle_list[i].z - particle_list[j].z;
         param.runbond_nat[k] = sqrt(pow(xij, 2) + pow(yij, 2) +
                 pow(zij, 2));
         if (param.kunbond[k] == 1) {
@@ -2337,9 +2332,9 @@ int pf::Simulation::nativeinformation() {
         int k = i + 2;
         int l = i + 3;
 
-        xij = particle_list[j].x - particle_list[i].x;
-        yij = particle_list[j].y - particle_list[i].y;
-        zij = particle_list[j].z - particle_list[i].z;
+        xij = particle_list[i].x - particle_list[j].x;
+        yij = particle_list[i].y - particle_list[j].y;
+        zij = particle_list[i].z - particle_list[j].z;
 
         xkj = particle_list[k].x - particle_list[j].x;
         ykj = particle_list[k].y - particle_list[j].y;
