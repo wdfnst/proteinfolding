@@ -566,7 +566,7 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
                 || (i > param.npartM && j > param.npartM)) continue;
 
         if (param.kunbond[k] == 1) {
-            if (rij / param.kunbond[k] - param.gr0 < 8 * param.gdr) {
+            if (rij / param.runbond_nat[k] - param.gr0 < 8 * param.gdr) {
                 tem = 1 / (1 + exp((rij / (param.runbond_nat[k] +
                                     param.ddr_sol) - param.gr0) / param.gdr));
                 if (i <= param.npart1 && j <= param.npart1) {
@@ -690,6 +690,7 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
 
     if (param.iFlagMov != 2) param.gQ_f2 = 0;
     param.gQ_f = param.gQ_f1 + param.gQ_f2;
+    param.gQ_w = param.gQ_b - param.alpha_Qw * sum_rij;
 
     // !  Lagrange constrant potential:
     // !  Fixed B
@@ -1436,7 +1437,7 @@ int pf::Simulation::start_simulation() {
     // !===================== simulation start =====================
     // outermost loop
     // fortran code: do 2000 nConfcount=nCon0+1, nConform
-    for (int nConfcount = param.nCon0; nConfcount < param.nConform;
+    for (int nConfcount = param.nCon0; nConfcount < param.nConform ;
             nConfcount++) {
         // read the intial conformation
         // (in word, reverse initial and native conformation filenames) 
