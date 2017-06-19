@@ -1,0 +1,66 @@
+#include <iostream>
+#include <tuple>
+#include <vector>
+
+using namespace std;
+
+template<typename RType>
+struct Dataset {
+    std::vector<RType> record_list;
+    int groupbykey();
+    int groupbyvalue();
+    // Return element one by one
+    RType next();
+    // return a record list with same key, groupbykey() is necessary in advance
+    std::vector<RType&> next_samekeylist() {}
+    // Return a record list with same value, groupbyvalue() is necessary in adv
+    std::vector<RType&> next_samevaluelist();
+
+    typedef vector<RType> value_type;
+};
+
+// template<typename T>
+// std::tuple<typename T::value_type> get2dlist(const T t) {
+//     return std::make_tuple(t.next_samekeylist());
+// }
+// 
+// template<typename P1, typename... Param>
+// std::tuple<typename P1::value_type, typename Param::value_type...>
+// get2dlist(P1 p1, Param... param) {
+//     return tuple_cat(make_tuple(p1.next_samekeylist()), get2dlist(param...));
+// }
+template<typename T>
+std::tuple<typename T::value_type> get2dlist(const T t) {
+    return std::make_tuple(t[0]);
+}
+
+template<typename P1, typename... Param>
+std::tuple<typename P1::value_type, typename Param::value_type...>
+get2dlist(P1 p1, Param... param) {
+    return tuple_cat(make_tuple(p1[0]), get2dlist(param...));
+}
+
+template<typename T, typename... Ts>
+int assembler(T t, Ts... args) {
+    int i = 3;
+    tuple<typename T::value_type, typename Ts::value_type...> records_2dlist;
+    do {
+        records_2dlist = get2dlist(t, args...);
+        cout << get<0>(records_2dlist) << " "<< get<1>(records_2dlist) << endl;
+        // reduce(records_2dlist);
+    } while (i--/*records_2dlist*/);
+    return 0;
+}
+
+int main() {
+    typedef pair<string, int> WC_Type;
+    vector<int> ds1 = {1, 2, 3};
+    vector<string> ds2 = {"aaa", "bbb", "ccc"};
+    assembler<vector<int>, vector<string>>(ds1, ds2);
+
+
+    Dataset<WC_Type> inds1, inds2;
+    inds1.record_list = {{"the", 1}, {"focus", 1}, {"find", 1}};
+    inds2.record_list = {{"an", 1}, {"focus", 1}, {"person", 1}};
+    return 0;
+}

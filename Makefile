@@ -1,7 +1,7 @@
 ###########################################
 #Makefile for simple programs
 ###########################################
-INC= -Iinclude/zoltan/
+INC= -I.
 LIB= -lstdc++ 
 CC= mpic++
 CC_FLAG=-Wall -std=c++11
@@ -11,6 +11,9 @@ PRG=pf
 
 $(PRG): *.cpp *.h
 		$(CC) $(CC_FLAG) $(INC) $(LIB) -o $@ $@.cpp
+
+run:
+	mpirun -np 1 $(PRG)
 			
 .SUFFIXES: .c .o .cpp
 	.cpp.o:

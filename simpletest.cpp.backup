@@ -1,0 +1,58 @@
+#include <iostream>
+#include <tuple>
+#include <vector>
+
+using namespace std;
+
+// template<typename T>
+// std::tuple<T> get2dlist(const T t) { return std::make_tuple(t); }
+// 
+// template<typename P1, typename... Param>
+// std::tuple<P1, Param...> get2dlist(P1 p1, Param... param) {
+//     // std::tuple<Param...> remainder = get2dlist(param...);
+//     return std::tuple_cat(get2dlist(param...), std::make_tuple(p1 + 1));
+// }
+
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+template<typename RType>
+struct Dataset {
+	std::vector<RType> record_list;
+	int groupbykey();
+	int groupbyvalue();
+	// Return element one by one
+	RType next();
+	// Pre-groupbykey() is necessary
+	std::vector<RType&> next_samekeylist();
+	// Pre-groupbyvalue() is necessary
+	std::vector<RType&> next_samevaluelist();
+
+    typedef RType value_type;
+};
+
+template<typename T>
+std::tuple<T> get2dlist(const T &t) {
+    return std::make_tuple(t.next_samekeylist());
+}
+
+template<typename P1, typename... Param>
+std::tuple<P1, Param...> get2dlist(P1 p1, Param... param) {
+    return std::tuple_cat(std::make_tuple(p1.next_samekeylist()),
+            get2dlist(param...));
+}
+
+template<typename T, typename... Ts>
+int assembler(T t, Ts... args) {
+    std::tuple<typename T::value_type, typename Ts::value_type...> records_2dlist;
+    do {
+        records_2dlist = get2dlist(t, args...);
+    } while (records_2dlist);
+
+    return 0;
+}
+
+int main() {
+
+    return 0;
+}

@@ -14,7 +14,7 @@
 #include <cmath>
 #include <string>
 #include <cstdarg>
-
+#include <mpi.h>
 
 using namespace std;
 
@@ -31,13 +31,20 @@ static const double eps = 1.0e-3, eps1 = 1.0 - 1.0e-6, eps2 = 1.0e-4,
       epstht = 1.0-1.0e-12;
 
 class Logger {
+private:
+    std::map<std::string, std::ofstream> outputfstream;
 public:
+    Logger() {};
+    ~Logger();
     int info(string filename, string msg);
     int debug(string filename, string msg);
     int warn(string filename, string msg);
     int err(string filename, string msg);
 
     string format(const char* fmt, ...);
+
+private:
+    static std::string logdir;
 };
 
 class statistics {
@@ -216,7 +223,7 @@ public:
 
     // Initialize parameter reference from fortran
     int intpar(double &enerkin);
-    int start_simulation();
+    int start_simulation(int rank);
 
     // Init particle list
     int init_particle(string filename);
@@ -246,7 +253,7 @@ public:
     // Related to Random generator
     int RANTERM();
     // verlet: one sort of dynamics model
-    int verlet(double &enerkin, double &e_pot);
+    int verlet(double &enerkin, double &e_pot, int rank);
     int pbc_shift();
     int output_conformation(int &nOutputGap, int &nOutputCount);
     int write_mol(int &nOutputCount);
@@ -261,6 +268,9 @@ public:
     double rannyu();
     int setrn(int iseed[4]);
     int savern(int iseed[4]);
+
+    // if mpi is enabled
+    int exchange_particle(int rank);
 
     // Unused function
     double calculate_gyrationradius();
@@ -282,4 +292,32 @@ public:
     int m[4], l[4];
 
 }; // end of class Simulation
+
+/*
+ * Class MPI_Core for supporting MPI Utility
+ */
+class MPI_Util {
+public:
+    MPI_Util(int argc, char** argv);
+    ~MPI_Util();
+    bool is_available();
+    int size();
+    int rank();
+
+private:
+    bool mpi_available;
+    int world_size;
+    int world_rank;
+}; // end of class MPI_Core
+
+/*
+ * Class CUDA_Core for supporting CUDA Utility
+ */
+class CUDA_Util {
+public:
+    bool init();
+    int rank();
+    bool finish();
+
+}; // end of class CUDA_Core
 } // end of namespace::pf

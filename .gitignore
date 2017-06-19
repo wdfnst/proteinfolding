@@ -1,3 +1,6 @@
 test/
+log/
 test*
+mytuple*
+error*
 pf

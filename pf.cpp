@@ -10,6 +10,10 @@
 
 using namespace std;
 
+/////////////////////////////////////////////////////////////////////////
+/********************Definition of class Logger members*****************/
+/////////////////////////////////////////////////////////////////////////
+std::string pf::Logger::logdir = "log/";
 string pf::Logger::format(const char* fmt, ...){
     int size = 512;
     char* buffer = 0;
@@ -30,18 +34,46 @@ string pf::Logger::format(const char* fmt, ...){
 }
 
 int pf::Logger::info(string filename, string msg){
+    std::map<std::string, std::ofstream>::iterator 
+        it = outputfstream.find(filename);
+
+    // check the file is open, if not then open it
+    if (it == outputfstream.end()) {
+        std::ofstream ofs;
+        // concate the directory string and filename
+        ofs.open(logdir + filename);
+        if (!ofs.is_open()) {
+            cout << "Open file " << filename << " failed.\n";
+            return -1;
+        }
+        outputfstream[filename] = move(ofs);
+        it = outputfstream.find(filename);
+    }
+    it->second.write(msg.c_str(), msg.size());
+        
     return 0;
 }
 
-// Constructors of class Parameter
-pf::Parameter::Parameter() {}
-pf::Parameter::Parameter(string filename) {
-    parse(filename);
+pf::Logger::~Logger() {
+    // close all the opened files
+    std::map<std::string, std::ofstream>::iterator iter = outputfstream.begin();
+    for (; iter != outputfstream.end(); iter++) {
+        if (iter->second.is_open()) {
+            iter->second.close();
+        } else {
+            std::cout << "Error opening file";
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////
 /*******************Definition of class Parameter members***************/
 /////////////////////////////////////////////////////////////////////////
+// Constructors of class Parameter
+pf::Parameter::Parameter() {}
+pf::Parameter::Parameter(string filename) {
+    parse(filename);
+}
 // Parse the configure file
 int pf::Parameter::parse(string filename) {
     // Open file for reading
@@ -207,9 +239,6 @@ void pf::Parameter::display() {
     cout << '\t' << Alpha1 << '\t' << Alpha2 << '\t' << Beta << endl;
     cout << '\t' << Delta << '\t' << CritR_non << endl;
 }
-/////////////////////////////////////////////////////////////////////////
-/******************End of definition of class Parameter*****************/
-/////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////
 /**********************Definition of class Particle*********************/
@@ -219,9 +248,6 @@ pf::Particle::Particle(double x, double y, double z) {
     this->y = y;
     this->z = z;
 }
-/////////////////////////////////////////////////////////////////////////
-/******************End of definition of class Particle******************/
-/////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////
 /*************************Definition of class Force*********************/
@@ -966,16 +992,16 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
 
     return 0;
 }
-/////////////////////////////////////////////////////////////////////////
-/**********************End of definition of class Force*****************/
-/////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////
 /*******************Definition of class Simulation**********************/
 /////////////////////////////////////////////////////////////////////////
-pf::Simulation::Simulation(string conf_filename) : param(conf_filename), force(param){
-}
+pf::Simulation::Simulation(string conf_filename) : param(conf_filename), 
+    force(param){ }
 
+/**
+ * Initialize parameters
+ */
 int pf::Simulation::intpar(double &enerkin) {
     param.temp = param.temp * param.epsil / param.boltz;
     double timeunit = sqrt(param.amass / param.epsil) * param.sigma_ij;
@@ -993,14 +1019,14 @@ int pf::Simulation::intpar(double &enerkin) {
       sqrt(2.0 * param.boltz * param.temp * param.gm / param.dt);
 
     // !  no change ck_r    -ZRLiu
-    // !       ck_r   = enscale*ck_r
+    // !       ck_r  = enscale*ck_r
     if (param.iFixKr == 0) param.ck_r = param.enscale * param.ck_r;
-    param.ck_tht = param.enscale * param.ck_tht;
-    param.ck_phi1= param.enscale * param.ck_phi1;
-    param.ck_phi3= param.enscale * param.ck_phi3;
-    param.epsil1 = param.enscale * param.epsil1;
-    param.epsil2 = param.enscale * param.epsil2;
-    param.epsilon_p= param.enscale * param.epsilon_p;
+    param.ck_tht     = param.enscale * param.ck_tht;
+    param.ck_phi1    = param.enscale * param.ck_phi1;
+    param.ck_phi3    = param.enscale * param.ck_phi3;
+    param.epsil1     = param.enscale * param.epsil1;
+    param.epsil2     = param.enscale * param.epsil2;
+    param.epsilon_p  = param.enscale * param.epsilon_p;
     param.epsilon_pp = param.enscale * param.epsilon_pp;
 
     // ! ccccccccccccccccccccccccccccccccc
@@ -1396,8 +1422,9 @@ int pf::Simulation::read_initalconform(string filename) {
 
 /**
  * Start the simulation
+ * MPI is disabled when rank = -1, else MPI is enabled and w.r.t process no.
  */
-int pf::Simulation::start_simulation() {
+int pf::Simulation::start_simulation(int rank) {
     string msg = "";
 
     //=======================Initial work start=====================/
@@ -1444,7 +1471,6 @@ int pf::Simulation::start_simulation() {
         // fortran code: read(20,*) xinit(i),yinit(i),zinit(i)
         read_initalconform(param.initialconform_filename);
 
-        // Copy from fortran code, TL: means?
         // Utility counter for all trajectories
         // (对得到的所有轨迹进行统计：发生/未发生的百分比)
         int nFoldSub = 0;
@@ -1494,7 +1520,12 @@ int pf::Simulation::start_simulation() {
             // fortran code: do 100 nadim_new=0,nstep
             for (int j = 0; j < param.nstep; j++) {
                 param.nadim += 1;
-                verlet(enerkin, e_pot);
+                verlet(enerkin, e_pot, rank);
+
+                // Exchange particles when rank != -1
+                if (rank != -1) {
+                    exchange_particle(rank);
+                }
 
                 // !-------------save data for purpose of restore-------------
                 // Because nadim_old and nOutGap_old is needed in the next
@@ -1604,6 +1635,15 @@ int pf::Simulation::start_simulation() {
     return 0;
 }
 
+int pf::Simulation::exchange_particle(int rank) {
+
+    // Calculate the send size and send offset
+
+    // MPI_Alltoallv();
+
+    return 0;
+}
+
 int pf::Simulation::RANTERM() {
     for (int i = 0; i < param.npartM; i++) {
         particle_list[i].frandx = gauss(xsi) * param.randconst;
@@ -1618,7 +1658,7 @@ int pf::Simulation::RANTERM() {
  * verlet: one sort of dynamics model
  * 分子动力学模拟算法
  */
-int pf::Simulation::verlet(double &enerkin, double &e_pot) {
+int pf::Simulation::verlet(double &enerkin, double &e_pot, int rank) {
     enerkin = 0.0;
     RANTERM();
 
@@ -1635,11 +1675,11 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot) {
                     param.gm * particle_list[i].vz) / 2.0);
     }
     e_pot = 0.0;
-    double e_bond_tot = 0.0;
-    double e_bend_tot = 0.0;
-    double e_tors_tot = 0.0;
+    double e_bond_tot   = 0.0;
+    double e_bend_tot   = 0.0;
+    double e_tors_tot   = 0.0;
     double e_unbond_tot = 0.0;
-    double e_bind_tot = 0.0;
+    double e_bind_tot   = 0.0;
     force.force(particle_list, e_pot, e_unbond_tot, e_bind_tot, e_tors_tot,
             e_bend_tot, e_bond_tot);
 
@@ -1736,15 +1776,17 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot) {
     }
 
     // Write the intermediate results
-    string msg = "nadim\tgQ_f\tgQ_b\tgQ_w\tE_k\tE_pot\tE_b\tE_bind\teGr\tR\n";
+    string msg = log.format("%13s %10s %10s %10s %10s %10s %10s %10s %10s %10s",
+            "nadim", "gQ_f", "gQ_b", "gQ_w", "E_k", "E_pot", "E_b", "E_bind",
+            "eGr", "R\n");
     if (param.nadim == 0)
         log.info(output_filenames[9], msg);
     if (param.nadim == 0)
         cout << msg;
-    msg = log.format("%13d %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f \
-        %10.3f %10.3f \n", param.nadim, param.gQ_f, param.gQ_b, param.gQ_w,
-        enerkin, e_pot, e_bond_tot, e_unbond_tot, e_bind_tot, param.eGr,
-        param.R);
+    msg = log.format("%13d %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f "
+            "%10.3f %10.3f %10.3f\n", param.nadim, param.gQ_f, param.gQ_b,
+            param.gQ_w, enerkin, e_pot, e_bond_tot, e_unbond_tot, e_bind_tot,
+            param.eGr, param.R);
     if (param.nadim % param.nsnap == 0)
         log.info(output_filenames[9], msg);
     if (param.nadim % param.nsnap == 0)
@@ -1855,9 +1897,10 @@ int pf::Simulation::output_conformation(int &nOutputGap, int &nOutputCount) {
         // gQ and natcont don't define, so we define them as follos
         double gQ = 0.0;
         int natcont = 0;
-        msg = log.format("n=%3d nadim=%4d gQ=%7.3f, old gQ=%3d\n",
+        msg = log.format("n =%3d nadim =%4d gQ =%7.3f, old gQ =%3d\n",
                 nOutputCount, param.nadim, gQ, natcont);
-        cout << msg;
+        // comment the following line for debug (for good output appearance)
+        // cout << msg;
     }
 
     return 0;
@@ -2375,13 +2418,53 @@ int pf::Simulation::nativeinformation() {
     }
     return 0;
 }
+
 /////////////////////////////////////////////////////////////////////////
-/******************End of definition of class Simulation****************/
+/******************Start of definition of class MPI_Util****************/
+/////////////////////////////////////////////////////////////////////////
+pf::MPI_Util::MPI_Util(int argc, char** argv){
+    if (MPI_Init(&argc, &argv) != MPI_SUCCESS) {
+        cout << "MPI init failed.\n";
+    }
+    mpi_available = true;
+    cout << "MPI init success.\n";
+}
+
+pf::MPI_Util::~MPI_Util(){
+    if (mpi_available == true) {
+        MPI_Finalize();
+        cout << "MPI finalize success.\n";
+    }
+}
+
+bool pf::MPI_Util::is_available(){
+    return mpi_available;
+}
+
+int pf::MPI_Util::size() {
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    return world_rank; 
+}
+int pf::MPI_Util::rank() {
+    MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+    return world_size; 
+}
+/////////////////////////////////////////////////////////////////////////
+/**********************End of definition of classes*********************/
 /////////////////////////////////////////////////////////////////////////
 
-int main()
+int main(int argc, char** argv)
 {
+    pf::MPI_Util mpiutil(argc, argv);
+    // Check if mpi_init is done
+    if (!mpiutil.is_available()) {
+        cout << "MPI_Init failed.\n";
+        return 0;
+    }
+    int rank = mpiutil.rank();
+
     pf::Simulation sim("input.1BE9.test.dat");
-    sim.start_simulation();
+    sim.start_simulation(rank);
+
     return 0;
 }
