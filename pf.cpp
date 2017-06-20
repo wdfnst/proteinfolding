@@ -13,7 +13,7 @@ using namespace std;
 /////////////////////////////////////////////////////////////////////////
 /********************Definition of class Logger members*****************/
 /////////////////////////////////////////////////////////////////////////
-std::string pf::Logger::logdir = "log/";
+std::string pf::Logger::outputdir = "output/";
 string pf::Logger::format(const char* fmt, ...){
     int size = 512;
     char* buffer = 0;
@@ -41,7 +41,7 @@ int pf::Logger::info(string filename, string msg){
     if (it == outputfstream.end()) {
         std::ofstream ofs;
         // concate the directory string and filename
-        ofs.open(logdir + filename);
+        ofs.open(outputdir + filename);
         if (!ofs.is_open()) {
             cout << "Open file " << filename << " failed.\n";
             return -1;
@@ -257,10 +257,10 @@ pf::Force::Force(Parameter &param_) :param(param_){ }
 
 int pf::Force::force(vector<Particle> &particle_list, double &e_pot, 
         double &e_unbond_tot, double &e_bind_tot, double &e_tors_tot, 
-        double &e_bend_tot, double &e_bond_tot) {
+        double &e_bend_tot, double &e_bond_tot, int start_idx, int end_idx) {
     e_pot=0.0;
 
-    for (int i = 0; i < param.npartM; i++) {
+    for (int i = start_idx; i < end_idx; i++) {
         particle_list[i].fx = 0;
         particle_list[i].fy = 0;
         particle_list[i].fz = 0;
@@ -284,12 +284,12 @@ int pf::Force::force(vector<Particle> &particle_list, double &e_pot,
     e_unbond_tot = 0.0;
     e_bind_tot = 0.0;
 
-    fbond(particle_list, e_bond_tot);
-    fbend(particle_list, e_bend_tot);
-    ftorsion(particle_list, e_tors_tot);
-    funbond(particle_list, e_unbond_tot, e_bind_tot);
+    fbond(particle_list, e_bond_tot, start_idx, end_idx);
+    fbend(particle_list, e_bend_tot, start_idx, end_idx);
+    ftorsion(particle_list, e_tors_tot, start_idx, end_idx);
+    funbond(particle_list, e_unbond_tot, e_bind_tot, start_idx, end_idx);
 
-    for (int i = 0; i < param.npartM; i++) {
+    for (int i = start_idx; i < end_idx; i++) {
         particle_list[i].fx += (particle_list[i].fxr + particle_list[i].fxth +
             particle_list[i].fxph + particle_list[i].fxun);
         particle_list[i].fy += (particle_list[i].fyr + particle_list[i].fyth +
@@ -301,8 +301,9 @@ int pf::Force::force(vector<Particle> &particle_list, double &e_pot,
     return 0;
 }
 
-double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot) {
-    for (int i = 0; i < param.npartM - 1; i++) {
+double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot,
+        int start_idx, int end_idx) {
+    for (int i = start_idx; i < end_idx - 1; i++) {
         if (i == param.npart1) break;
         int j = i + 1;
         double xij = particle_list[i].x - particle_list[j].x;
@@ -337,8 +338,9 @@ double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot) {
     return 0;
 }
 
-double pf::Force::fbend(vector<Particle> &particle_list, double &e_bend_tot) {
-    for (int i = 0; i < param.npartM - 2; i++) {
+double pf::Force::fbend(vector<Particle> &particle_list, double &e_bend_tot,
+        int start_idx, int end_idx) {
+    for (int i = start_idx; i < end_idx - 2; i++) {
         int j = i + 1;
         int k = i + 2;
         double xij = particle_list[i].x - particle_list[j].x;
@@ -403,8 +405,8 @@ double pf::Force::fbend(vector<Particle> &particle_list, double &e_bend_tot) {
 }
 
 double pf::Force::ftorsion(vector<Particle> &particle_list,
-        double &e_tors_tot) {
-    for (int i = 0; i < param.npartM - 3; i++) {
+        double &e_tors_tot, int start_idx, int end_idx) {
+    for (int i = start_idx; i < end_idx - 3; i++) {
         int j = i + 1;
         int k = i + 2;
         int l = i + 3;
@@ -538,13 +540,15 @@ double pf::Force::ftorsion(vector<Particle> &particle_list,
 }
 
 double pf::Force::funbond(vector<Particle> &particle_list, double &e_unbond_tot,
-        double &e_bind_tot) {
+        double &e_bind_tot, int start_idx, int end_idx) {
 
     if(param.Is_Solvation == 0) {
-        funbond_without(particle_list, e_unbond_tot, e_bind_tot);
+        funbond_without(particle_list, e_unbond_tot, e_bind_tot, start_idx,
+                end_idx);
     }
     else if(param.Is_Solvation == 1) {
-        funbond_with(particle_list, e_unbond_tot, e_bind_tot);
+        funbond_with(particle_list, e_unbond_tot, e_bind_tot, start_idx,
+                end_idx);
     }
     return 0;
 }
@@ -553,7 +557,7 @@ double pf::Force::funbond(vector<Particle> &particle_list, double &e_unbond_tot,
  * Solve unbond force with solvent
  */
 double pf::Force::funbond_with(vector<Particle> &particle_list,
-        double &e_unbond_tot, double &e_bind_tot) {
+        double &e_unbond_tot, double &e_bind_tot, int start_idx, int end_idx) {
     param.gQ_f     = 0.0;
     param.gQ_f1    = 0.0;
     param.gQ_f2    = 0.0;
@@ -789,7 +793,7 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
  * Solve unbond force without solvent
  */
 double pf::Force::funbond_without(vector<Particle> &particle_list,
-        double &e_unbond_tot, double &e_bind_tot) {
+        double &e_unbond_tot, double &e_bind_tot, int start_idx, int end_idx) {
     param.gQ_f     = 0.0;
     param.gQ_f1    = 0.0;
     param.gQ_f2    = 0.0;
@@ -996,8 +1000,9 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
 /////////////////////////////////////////////////////////////////////////
 /*******************Definition of class Simulation**********************/
 /////////////////////////////////////////////////////////////////////////
-pf::Simulation::Simulation(string conf_filename) : param(conf_filename), 
-    force(param){ }
+std::string pf::Simulation::inputdir = "input/";
+pf::Simulation::Simulation(string conf_filename)
+    : param(inputdir + conf_filename), force(param){ }
 
 /**
  * Initialize parameters
@@ -1284,7 +1289,6 @@ int pf::Simulation::output_info() {
     cout << setw(50) << "gQf2nativ:" << param.gQf2nativ << endl;
     cout << setw(50) << "gQf2denatural:" << param.gQf2denatural << endl;
 
-
    cout << setw(50) << "Force scheme:" << param.Is_Solvation << endl;
    cout << setw(50) << "If save E-Histogram:" << param.IsEbin << endl;
    cout << setw(50) << "E-Histogram nbin:" << param.nEbin << endl;
@@ -1318,7 +1322,7 @@ int pf::Simulation::output_info() {
  * Read particles from file
  */
 int pf::Simulation::read_nativeconform(string filename) {
-    fstream fin(filename, std::ifstream::in);
+    fstream fin(inputdir + filename, std::ifstream::in);
     if (!fin.is_open()) {
         cerr << "failed to open " << filename << '\n';
         return 1;
@@ -1336,7 +1340,7 @@ int pf::Simulation::read_nativeconform(string filename) {
 /** Read appNCS_****.dat
  */
 int pf::Simulation::read_appNCS(string filename) {
-    fstream fin(filename, std::ifstream::in);
+    fstream fin(inputdir + filename, std::ifstream::in);
     if (!fin.is_open()) {
         cerr << "failed to open " << filename << '\n';
         return 1;
@@ -1399,7 +1403,7 @@ int pf::Simulation::read_appNCS(string filename) {
  * 修改：只读一个构象
  */
 int pf::Simulation::read_initalconform(string filename) {
-    fstream fin(filename, std::ifstream::in);
+    fstream fin(inputdir + filename, std::ifstream::in);
     if (!fin.is_open()) {
         cerr << "failed to open " << filename << '\n';
         return 1;
@@ -1424,18 +1428,27 @@ int pf::Simulation::read_initalconform(string filename) {
  * Start the simulation
  * MPI is disabled when rank = -1, else MPI is enabled and w.r.t process no.
  */
-int pf::Simulation::start_simulation(int rank) {
+int pf::Simulation::start_simulation(int rank, int size) {
     string msg = "";
+    int part_size = param.npartM / size;
+    int start_idx = part_size * rank;
+    int end_idx   = part_size * (rank + 1);
+    // Assign the last several particles whose number is fewer than part_size
+    // to the last process
+    if (param.npartM - end_idx < part_size) {
+        end_idx = param.npartM;
+    }
 
     //=======================Initial work start=====================/
     // !-------------read parameters-------------------
     // Parameter Reading and parsing are in the constructor of class Simulation
+    start_time = MPI_Wtime();
     
     // !-------------open files to save-------------------
     // The work of intermediate result is complished by class Logger
     // Formate_output_filenames
     formate_output_filenames();
-    output_info();
+    if (rank == 0) output_info();
 
     // Read native conformation: unit_20<-->initialConf, unit_2<-->NativeConf
     // fortran code: read (2,*)(x(j),y(j),z(j),j=1,nparttol)
@@ -1496,7 +1509,7 @@ int pf::Simulation::start_simulation(int rank) {
             double e_unbond_tot = 0.0;
             double e_bind_tot   = 0.0;
             force.force(particle_list, e_pot, e_unbond_tot, e_bind_tot,
-                    e_tors_tot, e_bend_tot, e_bond_tot);
+                    e_tors_tot, e_bend_tot, e_bond_tot, 0, param.npartM);
             // Generate a random coordinates
             RANTERM();
 
@@ -1520,11 +1533,11 @@ int pf::Simulation::start_simulation(int rank) {
             // fortran code: do 100 nadim_new=0,nstep
             for (int j = 0; j < param.nstep; j++) {
                 param.nadim += 1;
-                verlet(enerkin, e_pot, rank);
+                verlet(enerkin, e_pot, start_idx, end_idx);
 
                 // Exchange particles when rank != -1
-                if (rank != -1) {
-                    exchange_particle(rank);
+                if (rank != -1 && size > 1) {
+                    exchange_particle(rank, size);
                 }
 
                 // !-------------save data for purpose of restore-------------
@@ -1557,7 +1570,7 @@ int pf::Simulation::start_simulation(int rank) {
 
                     InitVel(enerkin);
                     force.force(particle_list, e_pot, e_unbond_tot, e_bind_tot,
-                            e_tors_tot, e_bend_tot, e_bond_tot);
+                            e_tors_tot, e_bend_tot, e_bond_tot, 0, param.npartM);
                     // Related to Randon number generator
                     RANTERM();
 
@@ -1635,11 +1648,25 @@ int pf::Simulation::start_simulation(int rank) {
     return 0;
 }
 
-int pf::Simulation::exchange_particle(int rank) {
-
+/**
+ * Exchange particles accomodated in different processes
+ */
+int pf::Simulation::exchange_particle(int rank, int size) {
     // Calculate the send size and send offset
-
-    // MPI_Alltoallv();
+    std::valarray<int> rcounts(0, size), rdispls(0, size);
+    int part_size = param.npartM / size;
+    int last_part_size = param.npartM - (size - 1) * part_size;
+    int send_size = (rank == size - 1) ? last_part_size : part_size;
+    for (int i = 0; i < size; i++) {
+        rcounts[i] = part_size;
+        rdispls[i] = i * part_size;
+        
+        if (i == size - 1)
+            rcounts[i] = last_part_size;
+    }
+    // MPI_Allgatherv();
+    MPI_Gatherv(&particle_list[0], send_size, MPI_BYTE, &particle_list[0],
+            &rcounts[0], &rdispls[0], MPI_BYTE, 0, MPI_COMM_WORLD);
 
     return 0;
 }
@@ -1658,12 +1685,14 @@ int pf::Simulation::RANTERM() {
  * verlet: one sort of dynamics model
  * 分子动力学模拟算法
  */
-int pf::Simulation::verlet(double &enerkin, double &e_pot, int rank) {
+int pf::Simulation::verlet(double &enerkin, double &e_pot, int start_idx,
+        int end_idx) {
     enerkin = 0.0;
     RANTERM();
 
     // Calculate coordinates
-    for (int i = 0; i < param.npartM; i++) {
+    // for (int i = 0; i < param.npartM; i++) {
+    for (int i = start_idx; i < end_idx; i++) {
         particle_list[i].x += (param.dt * particle_list[i].vx + pow(param.dt, 2)
                 * (particle_list[i].fxo + particle_list[i].frandxo -
                     param.gm * particle_list[i].vx) / 2.0);
@@ -1681,10 +1710,11 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot, int rank) {
     double e_unbond_tot = 0.0;
     double e_bind_tot   = 0.0;
     force.force(particle_list, e_pot, e_unbond_tot, e_bind_tot, e_tors_tot,
-            e_bend_tot, e_bond_tot);
+            e_bend_tot, e_bond_tot, start_idx, end_idx);
 
     // Calculate verlocity
-    for (int i = 0; i < param.npartM; i++) {
+    // for (int i = 0; i < param.npartM; i++) {
+    for (int i = start_idx; i < end_idx; i++) {
         particle_list[i].vx = param.c_1 * particle_list[i].vx + param.c_2 * 
             (particle_list[i].fxo + particle_list[i].frandxo +
              particle_list[i].fx + particle_list[i].frandx);
@@ -1698,7 +1728,8 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot, int rank) {
             pow(particle_list[i].vz, 2);
     }
 
-    for (int i = 0; i < param.npartM; i++) {
+    // for (int i = 0; i < param.npartM; i++) {
+    for (int i = start_idx; i < end_idx; i++) {
         particle_list[i].fxo = particle_list[i].fx;
         particle_list[i].fyo = particle_list[i].fy;
         particle_list[i].fzo = particle_list[i].fz;
@@ -1775,22 +1806,27 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot, int rank) {
         statis.PQwQfbin[iWbin][ibin_f1] = statis.PQwQfbin[iWbin][ibin_f1] + 1;
     }
 
-    // Write the intermediate results
-    string msg = log.format("%13s %10s %10s %10s %10s %10s %10s %10s %10s %10s",
-            "nadim", "gQ_f", "gQ_b", "gQ_w", "E_k", "E_pot", "E_b", "E_bind",
-            "eGr", "R\n");
-    if (param.nadim == 0)
+    // Write out the intermediate results
+    string msg = "";
+    if (param.nadim == 0) {
+         msg = log.format("%13s %10s %10s %10s %10s %10s %10s %10s %10s %10s "
+                 "%10s %10s\n", "nadim", "gQ_f", "gQ_b", "gQ_w", "E_k", "E_pot",
+                    "E_b", "E_bind", "eGr", "R", "-", "Time");
         log.info(output_filenames[9], msg);
-    if (param.nadim == 0)
-        cout << msg;
-    msg = log.format("%13d %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f "
-            "%10.3f %10.3f %10.3f\n", param.nadim, param.gQ_f, param.gQ_b,
-            param.gQ_w, enerkin, e_pot, e_bond_tot, e_unbond_tot, e_bind_tot,
-            param.eGr, param.R);
-    if (param.nadim % param.nsnap == 0)
+        // Output info to console, only the first process do 
+        if (start_idx == 0) cout << msg;
+    }
+    if (param.nadim % param.nsnap == 0) {
+        msg = log.format("%13d %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f"
+                " %10.3f %10.3f %10.3f %10f\n", param.nadim, param.gQ_f,
+                param.gQ_b, param.gQ_w, enerkin, e_pot, e_bond_tot,
+                e_unbond_tot, e_bind_tot, param.eGr, param.R,
+                MPI_Wtime() - start_time);
         log.info(output_filenames[9], msg);
-    if (param.nadim % param.nsnap == 0)
-        cout << msg;
+        start_time = MPI_Wtime();
+        // Output info to console, only the first process do
+        if (start_idx == 0) cout << msg;
+    }
     return 0;
 }
 
@@ -2442,12 +2478,12 @@ bool pf::MPI_Util::is_available(){
 }
 
 int pf::MPI_Util::size() {
-    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
-    return world_rank; 
-}
-int pf::MPI_Util::rank() {
     MPI_Comm_size(MPI_COMM_WORLD, &world_size);
     return world_size; 
+}
+int pf::MPI_Util::rank() {
+    MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+    return world_rank; 
 }
 /////////////////////////////////////////////////////////////////////////
 /**********************End of definition of classes*********************/
@@ -2462,9 +2498,10 @@ int main(int argc, char** argv)
         return 0;
     }
     int rank = mpiutil.rank();
+    int size = mpiutil.size();
 
     pf::Simulation sim("input.1BE9.test.dat");
-    sim.start_simulation(rank);
+    sim.start_simulation(rank, size);
 
     return 0;
 }

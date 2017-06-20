@@ -1,6 +1,5 @@
-test/
-log/
-test*
+log/*
+output/*
 mytuple*
 error*
 pf

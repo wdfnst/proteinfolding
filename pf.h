@@ -15,6 +15,7 @@
 #include <string>
 #include <cstdarg>
 #include <mpi.h>
+#include <valarray>
 
 using namespace std;
 
@@ -44,7 +45,7 @@ public:
     string format(const char* fmt, ...);
 
 private:
-    static std::string logdir;
+    static std::string outputdir;
 };
 
 class statistics {
@@ -195,18 +196,21 @@ public:
 
     int force(vector<Particle> &particle_list, double &e_pot,
             double &e_unbond_tot, double &e_bind_tot, double &e_tors_tot,
-            double &e_bend_tot, double &e_bond_tot);
+            double &e_bend_tot, double &e_bond_tot, int start_idx, int end_idx);
     // component forces
-    double fbond(vector<Particle> &particle_list, double &e_bond_tot);
-    double fbend(vector<Particle> &particle_list, double &e_bend_tot);
-    double ftorsion(vector<Particle> &particle_list, double &e_tors_tot);
+    double fbond(vector<Particle> &particle_list, double &e_bond_tot,
+            int start_idx, int end_idx);
+    double fbend(vector<Particle> &particle_list, double &e_bend_tot,
+            int start_idx, int end_idx);
+    double ftorsion(vector<Particle> &particle_list, double &e_tors_tot,
+            int start_idx, int end_idx);
     double funbond(vector<Particle> &particle_list, double &e_unbond_tot,
-            double &e_bind_tot);
+            double &e_bind_tot, int start_idx, int end_idx);
 
     double funbond_with(vector<Particle> &particle_list, double &e_unbond_tot,
-            double &e_bind_tot);
-    double funbond_without(vector<Particle> &particle_list,
-            double &e_unbond_tot, double &e_bind_tot);
+            double &e_bind_tot, int start_idx, int end_idx);
+    double funbond_without(vector<Particle> &particle_list, double
+            &e_unbond_tot, double &e_bind_tot, int start_idx, int end_idx);
 
 public:
     Parameter &param;
@@ -223,7 +227,7 @@ public:
 
     // Initialize parameter reference from fortran
     int intpar(double &enerkin);
-    int start_simulation(int rank);
+    int start_simulation(int rank, int size);
 
     // Init particle list
     int init_particle(string filename);
@@ -253,7 +257,7 @@ public:
     // Related to Random generator
     int RANTERM();
     // verlet: one sort of dynamics model
-    int verlet(double &enerkin, double &e_pot, int rank);
+    int verlet(double &enerkin, double &e_pot, int start_idx, int end_idx);
     int pbc_shift();
     int output_conformation(int &nOutputGap, int &nOutputCount);
     int write_mol(int &nOutputCount);
@@ -270,7 +274,7 @@ public:
     int savern(int iseed[4]);
 
     // if mpi is enabled
-    int exchange_particle(int rank);
+    int exchange_particle(int rank, int size);
 
     // Unused function
     double calculate_gyrationradius();
@@ -290,6 +294,11 @@ public:
           a5 = 0.076542912, a7 = 0.008355968, a9 = 0.029899776;
     // TL: when to initialize the m(4), while l(4) is init in setrn()
     int m[4], l[4];
+
+    // Statistic and profiling
+    double start_time;
+
+    static string inputdir;
 
 }; // end of class Simulation
 
