@@ -258,6 +258,7 @@ pf::Force::Force(Parameter &param_) :param(param_){ }
 int pf::Force::force(vector<Particle> &particle_list, double &e_pot, 
         double &e_unbond_tot, double &e_bind_tot, double &e_tors_tot, 
         double &e_bend_tot, double &e_bond_tot, int start_idx, int end_idx) {
+    // potential energy; static energy
     e_pot=0.0;
 
     for (int i = start_idx; i < end_idx; i++) {
@@ -744,48 +745,48 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
         double e_unbond_drv = 0;
 
         if (param.kunbond[k] == 1) {
-        xij = particle_list[i].x - particle_list[j].x;
-        yij = particle_list[i].y - particle_list[j].y;
-        zij = particle_list[i].z - particle_list[j].z;
-        rij = sqrt(pow(xij, 2) + pow(yij, 2) + pow(zij, 2));
+            xij = particle_list[i].x - particle_list[j].x;
+            yij = particle_list[i].y - particle_list[j].y;
+            zij = particle_list[i].z - particle_list[j].z;
+            rij = sqrt(pow(xij, 2) + pow(yij, 2) + pow(zij, 2));
 
-        if( i <= param.npart1 && j <= param.npart1) {
-            e_unbond_drv = param.ga1_f1 + 2 * param.ga2_f1 * (param.gQ_f1 -
-                    param.gQ0_f1);
-        }
-        else if(i <= param.npart1 && j > param.npart1) {
-          e_unbond_drv = param.ga1_b + 2 * param.ga2_b *
-              (param.gQ_b - param.gQ0_b ) + param.ga1_w +
-              2 * param.ga2_w * (param.gQ_w - param.gQ0_w);
-        }
-        else {
-            e_unbond_drv = param.ga1_f2 + 2 * param.ga2_f2 * (param.gQ_f2 -
-                    param.gQ0_f2);
-        }
+            if( i <= param.npart1 && j <= param.npart1) {
+                e_unbond_drv = param.ga1_f1 + 2 * param.ga2_f1 * (param.gQ_f1 -
+                        param.gQ0_f1);
+            }
+            else if(i <= param.npart1 && j > param.npart1) {
+              e_unbond_drv = param.ga1_b + 2 * param.ga2_b *
+                  (param.gQ_b - param.gQ0_b ) + param.ga1_w +
+                  2 * param.ga2_w * (param.gQ_w - param.gQ0_w);
+            }
+            else {
+                e_unbond_drv = param.ga1_f2 + 2 * param.ga2_f2 * (param.gQ_f2 -
+                        param.gQ0_f2);
+            }
 
-        if ((rij / (param.runbond_nat[k] + param.ddr_sol) - param.gr0) <
-                -8 * param.gdr || (rij / (param.runbond_nat[k] + param.ddr_sol)
-                    - param.gr0) > 8 * param.gdr) {
-            e_unbond_drv = 0.0;
-        } else {
-            tem = exp((rij / (param.runbond_nat[k] + param.ddr_sol) - param.gr0)
-                    / param.gdr);
-            e_unbond_drv = e_unbond_drv * tem / pow(1 + tem, 2) /
-                ((param.runbond_nat[k] + param.ddr_sol) * param.gdr);
-        }
+            if ((rij / (param.runbond_nat[k] + param.ddr_sol) - param.gr0) <
+                    -8 * param.gdr || (rij / (param.runbond_nat[k] + 
+                            param.ddr_sol) - param.gr0) > 8 * param.gdr) {
+                e_unbond_drv = 0.0;
+            } else {
+                tem = exp((rij / (param.runbond_nat[k] + param.ddr_sol) - 
+                            param.gr0) / param.gdr);
+                e_unbond_drv = e_unbond_drv * tem / pow(1 + tem, 2) /
+                    ((param.runbond_nat[k] + param.ddr_sol) * param.gdr);
+            }
 
-        if (i <= param.npartM) {
-            particle_list[i].fxun += e_unbond_drv * xij / rij;
-            particle_list[i].fyun += e_unbond_drv * yij / rij;
-            particle_list[i].fzun += e_unbond_drv * zij / rij;
-        }
-        if (j <= param.npartM) {
-            particle_list[j].fxun -= e_unbond_drv * xij / rij;
-            particle_list[j].fyun -= e_unbond_drv * yij / rij;
-            particle_list[j].fzun -= e_unbond_drv * zij / rij;
+            if (i <= param.npartM) {
+                particle_list[i].fxun += e_unbond_drv * xij / rij;
+                particle_list[i].fyun += e_unbond_drv * yij / rij;
+                particle_list[i].fzun += e_unbond_drv * zij / rij;
+            }
+            if (j <= param.npartM) {
+                particle_list[j].fxun -= e_unbond_drv * xij / rij;
+                particle_list[j].fyun -= e_unbond_drv * yij / rij;
+                particle_list[j].fzun -= e_unbond_drv * zij / rij;
+            }
         }
     }
-}
     return 0;
 }
 
@@ -1433,8 +1434,6 @@ int pf::Simulation::start_simulation(int rank, int size) {
     int part_size = param.npartM / size;
     int start_idx = part_size * rank;
     int end_idx   = part_size * (rank + 1);
-    // Assign the last several particles whose number is fewer than part_size
-    // to the last process
     if (param.npartM - end_idx < part_size) {
         end_idx = param.npartM;
     }
@@ -1603,6 +1602,8 @@ int pf::Simulation::start_simulation(int rank, int size) {
                 }
             } // fortran code: 100 continue
 
+            cout << "==================================\n";
+
             // Accumulate the number of folding (动力学模拟情况下: 折叠计数)
             aveNadim += param.nadim;
             int k = 0;
@@ -1657,16 +1658,18 @@ int pf::Simulation::exchange_particle(int rank, int size) {
     int part_size = param.npartM / size;
     int last_part_size = param.npartM - (size - 1) * part_size;
     int send_size = (rank == size - 1) ? last_part_size : part_size;
+    
+    // Particle is class, so send_size multiplies sizeof(Particle)
+    send_size *= sizeof(Particle);
     for (int i = 0; i < size; i++) {
-        rcounts[i] = part_size;
-        rdispls[i] = i * part_size;
+        rcounts[i] = part_size * sizeof(Particle);
+        rdispls[i] = i * part_size * sizeof(Particle);
         
         if (i == size - 1)
-            rcounts[i] = last_part_size;
+            rcounts[i] = last_part_size * sizeof(Particle);
     }
-    // MPI_Allgatherv();
-    MPI_Gatherv(&particle_list[0], send_size, MPI_BYTE, &particle_list[0],
-            &rcounts[0], &rdispls[0], MPI_BYTE, 0, MPI_COMM_WORLD);
+    MPI_Gatherv(&particle_list[0], send_size, MPI_BYTE, &particle_list[0], 
+                &rcounts[0], &rdispls[0], MPI_BYTE, 0, MPI_COMM_WORLD);
 
     return 0;
 }
@@ -1809,9 +1812,11 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot, int start_idx,
     // Write out the intermediate results
     string msg = "";
     if (param.nadim == 0) {
+        cout << "param.nadim, start_dix:" << param.nadim << ", " << start_idx 
+            << endl;
          msg = log.format("%13s %10s %10s %10s %10s %10s %10s %10s %10s %10s "
                  "%10s %10s\n", "nadim", "gQ_f", "gQ_b", "gQ_w", "E_k", "E_pot",
-                    "E_b", "E_bind", "eGr", "R", "-", "Time");
+                    "E_b", "E_unbond", "E_bind", "eGr", "R", "Time");
         log.info(output_filenames[9], msg);
         // Output info to console, only the first process do 
         if (start_idx == 0) cout << msg;

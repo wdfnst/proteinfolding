@@ -13,7 +13,7 @@ $(PRG): *.cpp *.h
 		$(CC) $(CC_FLAG) $(INC) $(LIB) -o $@ $@.cpp
 
 run:
-	mpirun -np 5 $(PRG)
+	mpirun -np 1 $(PRG)
 			
 .SUFFIXES: .c .o .cpp
 	.cpp.o:
