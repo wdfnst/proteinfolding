@@ -304,7 +304,14 @@ int pf::Force::force(vector<Particle> &particle_list, double &e_pot,
 
 double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot,
         int start_idx, int end_idx) {
-    for (int i = start_idx; i < end_idx - 1; i++) {
+    // repeate calculate the previous element of the current first element
+    // 最后一个进程只有一个粒子, 则需要依靠前一个进程的最后一个粒子计算
+    if (end_idx == param.npartM && end_idx - start_idx <= 1) {
+        // start_idx = (start_idx - 1 <= 0) ? 0 : start_idx - 1; 
+        start_idx -= 1;
+    }
+//     for (int i = start_idx; i < end_idx - 1; i++) {
+    for (int i = start_idx; i < end_idx && i < param.npartM - 1; i++) {
         if (i == param.npart1) break;
         int j = i + 1;
         double xij = particle_list[i].x - particle_list[j].x;
@@ -341,7 +348,14 @@ double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot,
 
 double pf::Force::fbend(vector<Particle> &particle_list, double &e_bend_tot,
         int start_idx, int end_idx) {
-    for (int i = start_idx; i < end_idx - 2; i++) {
+    // repeate calculate the previous two element of the current first element
+    // 最后一个进程只有两个粒子, 则需要依靠前一个进程的最后两个粒子计算
+    if (start_idx != 0 && end_idx - start_idx <= 2) {
+        // start_idx = (start_idx - 2 <= 0) ? 0 : start_idx - 2;
+        start_idx -= 2;
+    }
+//     for (int i = start_idx; i < end_idx - 2; i++) {
+    for (int i = start_idx; i < end_idx && i < param.npartM - 2; i++) {
         int j = i + 1;
         int k = i + 2;
         double xij = particle_list[i].x - particle_list[j].x;
@@ -407,7 +421,14 @@ double pf::Force::fbend(vector<Particle> &particle_list, double &e_bend_tot,
 
 double pf::Force::ftorsion(vector<Particle> &particle_list,
         double &e_tors_tot, int start_idx, int end_idx) {
-    for (int i = start_idx; i < end_idx - 3; i++) {
+    // repeate calculate the previous three element of the current first element
+    // 最后一个进程只有两个粒子, 则需要依靠前一个进程的最后三个粒子计算
+    if (start_idx != 0 && end_idx - start_idx <= 3) {
+        // start_idx = (start_idx - 3 <= 0) ? 0 : start_idx - 3;
+        start_idx -= 3;
+    }
+//     for (int i = start_idx; i < end_idx - 3; i++) {
+    for (int i = start_idx; i < end_idx && i < param.npartM - 3; i++) {
         int j = i + 1;
         int k = i + 2;
         int l = i + 3;
@@ -578,7 +599,7 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
     double zij = 0.0;
     double rij = 0.0;
     double tem = 0.0;
-    // !  unbonded force for A:
+    // loop 40, !  unbonded force for A:
     for (int k = 0; k < param.nunbond; k++) {
         int i = param.iun[k] - 1;
         int j = param.jun[k] - 1;
@@ -598,8 +619,11 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
 
         if (param.kunbond[k] == 1) {
             if (rij / param.runbond_nat[k] - param.gr0 < 8 * param.gdr) {
-                tem = 1 / (1 + exp((rij / (param.runbond_nat[k] +
-                                    param.ddr_sol) - param.gr0) / param.gdr));
+                tem = 1 / (1 + exp((rij / (param.runbond_nat[k] + param.ddr_sol)
+                        - param.gr0) / param.gdr));
+                if (param.nadim % param.nsnap == 0 && tem < param.gQbdenatural) {
+                    cout << "tem:" << tem << endl;
+                }
                 if (i <= param.npart1 && j <= param.npart1) {
                     param.gQ_f1 += tem;
                 } else if (i <= param.npart1 && j > param.npart1) {
@@ -843,7 +867,7 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
                 } else if (param.iFlagMov == 2) {
                     param.gQ_f2 += tem;
                 }
-            } 
+            }
             if(i <= param.npart1 && j > param.npart1) {
                 sum_rij += (rij - param.runbond_nat[k]);
             }
@@ -1431,12 +1455,14 @@ int pf::Simulation::read_initalconform(string filename) {
  */
 int pf::Simulation::start_simulation(int rank, int size) {
     string msg = "";
-    int part_size = param.npartM / size;
+    int part_size = ceil(1.0 * param.npartM / size);
     int start_idx = part_size * rank;
     int end_idx   = part_size * (rank + 1);
-    if (param.npartM - end_idx < part_size) {
+    if (param.npartM - start_idx < part_size) {
         end_idx = param.npartM;
     }
+    std::cout << "npartM:" << param.npartM << ", part_size:" << end_idx - start_idx << std::endl;
+    std::cout << "[" << start_idx << ", " << end_idx << ")" << std::endl;
 
     //=======================Initial work start=====================/
     // !-------------read parameters-------------------
@@ -1525,25 +1551,45 @@ int pf::Simulation::start_simulation(int rank, int size) {
             nOutputCount = 0;
             // Control the output steps (控制在哪一步进行输出)
             int nOutputGap = -1;
+            // Because nadim_old and nOutGap_old is needed in the next
+            // "if statement", so I bring them out of the "if statement"
+            int nadim_old = param.nadim;
+            int nOutGap_old = nOutputGap;
 
             // Counter for the following loop (对下面循环进行计数)
             param.nadim = -1; // fortran code: nadim=-1
             // ! main dynamics cycle
             // fortran code: do 100 nadim_new=0,nstep
             for (int j = 0; j < param.nstep; j++) {
+//                 cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAA:" << rank << endl;
+                if (!rank && param.nadim % 10000 == 0) cout << param.nadim << '\n';
                 param.nadim += 1;
-                verlet(enerkin, e_pot, start_idx, end_idx);
+
+                // Unify all the state of first iteration
+                if (param.nadim == 0) {
+//                     if (rank == 0) {
+                    verlet(enerkin, e_pot, 0, param.npartM);
+//                     }
+                } else {
+                    verlet(enerkin, e_pot, start_idx, end_idx);
+                }
+                cout << " BBBBBBBBBBBBBBBBBBBBBBBBBBBBB:" << rank << endl;
 
                 // Exchange particles when rank != -1
                 if (rank != -1 && size > 1) {
-                    exchange_particle(rank, size);
+                    if (param.nadim == 0) {
+                        if (!rank)cout << "------------------------\n";
+                        MPI_Bcast(&particle_list[0], param.npartM * 
+                                sizeof(Particle), MPI_BYTE, 0, MPI_COMM_WORLD);
+                        MPI_Barrier(MPI_COMM_WORLD);
+                    } else { 
+                        if (!rank)cout << "++++++++++++++++++++++++\n";
+                        exchange_particle(rank, size);
+                    }
                 }
 
+                cout << "  CCCCCCCCCCCCCCCCCCCCCCCCCC:" << rank << endl;
                 // !-------------save data for purpose of restore-------------
-                // Because nadim_old and nOutGap_old is needed in the next
-                // "if statement", so I bring them out of the "if statement"
-                int nadim_old = param.nadim;
-                int nOutGap_old = nOutputGap;
                 // if(mod(nadim,nsnap).eq.0.and.vx(1).ge.-1e6.and.vx(1).le.1e6)
                 // because particle_list's index startswith 0, so v(1)-->[0]
                 if (param.nadim % param.nsnap == 0
@@ -1558,6 +1604,9 @@ int pf::Simulation::start_simulation(int rank, int size) {
                     nadim_old = param.nadim;
                     nOutGap_old = nOutputGap;
                 }
+
+//                 if(!rank)cout << "   DDDDDDDDDDDDDDDDDDDDDDDDDD\n";
+
                 // ! restore, TL: why restore?
                 if (!(particle_list[0].vx >= -1e6
                             && particle_list[0].vx <= 1e6)) {
@@ -1598,11 +1647,16 @@ int pf::Simulation::start_simulation(int rank, int size) {
                         || (param.gQ_f1 >= param.gQf1nativ
                             && param.gQ_f2 >= param.gQf2nativ
                             && param.gQ_b >= param.gQbnativ)) {
+                    if (!rank) {
+                    cout << param.gQ_f1 << ' ' << param.gQf1denatural << ' ' 
+                        << param.gQ_f2 << ' ' << param.gQf2denatural << ' ' 
+                        << param.gQ_b << ' ' << param.gQbdenatural << endl;
+                    cout << "bbbbbbbbbbbbbbbbbbbbbbbbb:" << param.nadim << endl;
+                    }
                     break;
                 }
+//                 if(!rank)cout << "    EEEEEEEEEEEEEEEEEEEEEEEE\n";
             } // fortran code: 100 continue
-
-            cout << "==================================\n";
 
             // Accumulate the number of folding (动力学模拟情况下: 折叠计数)
             aveNadim += param.nadim;
@@ -1655,21 +1709,56 @@ int pf::Simulation::start_simulation(int rank, int size) {
 int pf::Simulation::exchange_particle(int rank, int size) {
     // Calculate the send size and send offset
     std::valarray<int> rcounts(0, size), rdispls(0, size);
-    int part_size = param.npartM / size;
-    int last_part_size = param.npartM - (size - 1) * part_size;
-    int send_size = (rank == size - 1) ? last_part_size : part_size;
+    int part_size = ceil(1.0 * param.npartM / size);
+    int start_idx = part_size * rank;
+    int end_idx   = part_size * (rank + 1);
+    if (param.npartM - start_idx < part_size) {
+        end_idx = param.npartM;
+    }
+    int send_size = end_idx - start_idx;
+    int last_send_size = param.npartM - (size - 1) * part_size;
     
     // Particle is class, so send_size multiplies sizeof(Particle)
-    send_size *= sizeof(Particle);
     for (int i = 0; i < size; i++) {
         rcounts[i] = part_size * sizeof(Particle);
         rdispls[i] = i * part_size * sizeof(Particle);
         
         if (i == size - 1)
-            rcounts[i] = last_part_size * sizeof(Particle);
+            rcounts[i] = last_send_size * sizeof(Particle);
     }
-    MPI_Gatherv(&particle_list[0], send_size, MPI_BYTE, &particle_list[0], 
-                &rcounts[0], &rdispls[0], MPI_BYTE, 0, MPI_COMM_WORLD);
+    ////////////////////////////////////////////////////
+//     cout << "rank:" << rank << endl;
+//     for (int i = 0; i < size; ++i) {
+//         cout << rcounts[i] << ' ';
+//     }
+//     cout << endl;
+//     for (int i = 0; i < size; ++i) {
+//         cout << rdispls[i] << ' ';
+//     }
+//     cout << endl;
+    ////////////////////////////////////////////////////
+//     if (rank == 1) {
+//         cout << "before:";
+//         particle_list[0].display();
+//         particle_list[1].display();
+//         particle_list[2].display();
+//         particle_list[3].display();
+//         particle_list[4].display();
+//     }
+    if (!rank) cout << "b\n";
+    MPI_Allgatherv(&particle_list[rank * part_size], 
+            send_size * sizeof(Particle), MPI_BYTE, &particle_list[0], 
+            &rcounts[0], &rdispls[0], MPI_BYTE, MPI_COMM_WORLD);
+    if (!rank) cout << "a\n";
+//     if (rank == 1) {
+//         cout << "=====================================" << endl;
+//         cout << "after:";
+//         particle_list[0].display();
+//         particle_list[1].display();
+//         particle_list[2].display();
+//         particle_list[3].display();
+//         particle_list[4].display();
+//     }
 
     return 0;
 }
@@ -1812,15 +1901,39 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot, int start_idx,
     // Write out the intermediate results
     string msg = "";
     if (param.nadim == 0) {
-        cout << "param.nadim, start_dix:" << param.nadim << ", " << start_idx 
-            << endl;
-         msg = log.format("%13s %10s %10s %10s %10s %10s %10s %10s %10s %10s "
+//         cout << "param.nadim, start_dix:" << param.nadim << ", " << start_idx 
+//             << endl;
+        msg = log.format("%13s %10s %10s %10s %10s %10s %10s %10s %10s %10s "
                  "%10s %10s\n", "nadim", "gQ_f", "gQ_b", "gQ_w", "E_k", "E_pot",
                     "E_b", "E_unbond", "E_bind", "eGr", "R", "Time");
         log.info(output_filenames[9], msg);
         // Output info to console, only the first process do 
         if (start_idx == 0) cout << msg;
     }
+
+    ///////////////////////////////////////////////////////
+    if (param.gQ_f1 <= param.gQf1denatural
+        && param.gQ_f2 <= param.gQf2denatural
+        && param.gQ_b <= param.gQbdenatural) {
+        msg = log.format("%13s %10s %10s %10s %10s %10s %10s %10s %10s %10s "
+                 "%10s %10s\n", "nadim", "gQ_f", "gQ_b", "gQ_w", "E_k", "E_pot",
+                    "E_b", "E_unbond", "E_bind", "eGr", "R", "Time");
+        log.info(output_filenames[9], msg);
+        // Output info to console, only the first process do 
+        if (start_idx == 0) cout << msg;
+
+        msg = log.format("%13d %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f"
+                " %10.3f %10.3f %10.3f %10f\n", param.nadim, param.gQ_f,
+                param.gQ_b, param.gQ_w, enerkin, e_pot, e_bond_tot,
+                e_unbond_tot, e_bind_tot, param.eGr, param.R,
+                MPI_Wtime() - start_time);
+        log.info(output_filenames[9], msg);
+        start_time = MPI_Wtime();
+        // Output info to console, only the first process do
+        if (start_idx == 0) cout << msg;
+    }
+    ///////////////////////////////////////////////////////
+
     if (param.nadim % param.nsnap == 0) {
         msg = log.format("%13d %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f"
                 " %10.3f %10.3f %10.3f %10f\n", param.nadim, param.gQ_f,

@@ -162,9 +162,11 @@ public:
     // common/velocity/vx(MAXN),vy(MAXN),vz(MAXN)
     // common/forcetotalnew/fx(MAXN),fy(MAXN),fz(MAXN)
     // common/forcetotalold/fxo(MAXN),fyo(MAXN),fzo(MAXN)
+    //
     // common/forcestretching/fxr(MAXN),fyr(MAXN),fzr(MAXN)
     // common/forcebending/fxth(MAXN),fyth(MAXN),fzth(MAXN)
     // common/forcetorsion/fxph(MAXN),fyph(MAXN),fzph(MAXN)
+    //
     // common/forceunbonded/fxun(MAXN),fyun(MAXN),fzun(MAXN)
     // common/forcerandnew/frandx(MAXN),frandy(MAXN),frandz(MAXN)
     // common/forcerandold/frandxo(MAXN),frandyo(MAXN),frandzo(MAXN)
@@ -183,6 +185,13 @@ public:
     // *rand*: force by Brownian Motion (布朗运动产生的随机力)
     double frandx, frandy, frandz;
     double frandxo, frandyo, frandzo;
+
+    public:
+    void display() {
+        std::cout << fxr << ' ' << fyr << ' ' << fzr << ' '
+                   << fxth << ' ' << fyth << ' ' << fzth << ' '
+                   << fxph << ' ' << fyph << ' ' << fzph << std::endl;
+    }
 
 }; // end of class Particle
 
