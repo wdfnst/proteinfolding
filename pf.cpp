@@ -1561,34 +1561,27 @@ int pf::Simulation::start_simulation(int rank, int size) {
             // ! main dynamics cycle
             // fortran code: do 100 nadim_new=0,nstep
             for (int j = 0; j < param.nstep; j++) {
-//                 cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAA:" << rank << endl;
+//                 cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAA:";
                 if (!rank && param.nadim % 10000 == 0) cout << param.nadim << '\n';
                 param.nadim += 1;
 
                 // Unify all the state of first iteration
                 if (param.nadim == 0) {
-//                     if (rank == 0) {
                     verlet(enerkin, e_pot, 0, param.npartM);
-//                     }
+                    MPI_Bcast(&particle_list[0], param.npartM * 
+                            sizeof(Particle), MPI_BYTE, 0, MPI_COMM_WORLD);
+                    MPI_Barrier(MPI_COMM_WORLD);
                 } else {
                     verlet(enerkin, e_pot, start_idx, end_idx);
                 }
-                cout << " BBBBBBBBBBBBBBBBBBBBBBBBBBBBB:" << rank << endl;
+//                 cout << " BBBBBBBBBBBBBBBBBBBBBBBBBBBBB:" << rank << endl;
 
                 // Exchange particles when rank != -1
-                if (rank != -1 && size > 1) {
-                    if (param.nadim == 0) {
-                        if (!rank)cout << "------------------------\n";
-                        MPI_Bcast(&particle_list[0], param.npartM * 
-                                sizeof(Particle), MPI_BYTE, 0, MPI_COMM_WORLD);
-                        MPI_Barrier(MPI_COMM_WORLD);
-                    } else { 
-                        if (!rank)cout << "++++++++++++++++++++++++\n";
-                        exchange_particle(rank, size);
-                    }
+                if (rank != -1 && size > 1 && param.nadim != 0) {
+                    exchange_particle(rank, size);
                 }
 
-                cout << "  CCCCCCCCCCCCCCCCCCCCCCCCCC:" << rank << endl;
+//                 if(!rank)cout << "  CCCCCCCCCCCCCCCCCCCCCCCCCC\n";
                 // !-------------save data for purpose of restore-------------
                 // if(mod(nadim,nsnap).eq.0.and.vx(1).ge.-1e6.and.vx(1).le.1e6)
                 // because particle_list's index startswith 0, so v(1)-->[0]
@@ -1745,11 +1738,9 @@ int pf::Simulation::exchange_particle(int rank, int size) {
 //         particle_list[3].display();
 //         particle_list[4].display();
 //     }
-    if (!rank) cout << "b\n";
     MPI_Allgatherv(&particle_list[rank * part_size], 
             send_size * sizeof(Particle), MPI_BYTE, &particle_list[0], 
             &rcounts[0], &rdispls[0], MPI_BYTE, MPI_COMM_WORLD);
-    if (!rank) cout << "a\n";
 //     if (rank == 1) {
 //         cout << "=====================================" << endl;
 //         cout << "after:";
