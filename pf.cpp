@@ -97,7 +97,8 @@ int pf::Parameter::parse(string filename) {
         npartM = nparttol;
     }
     if (npart1 > nparttol) cerr << "Err: npart1 > nparttol\n";
-    if (npart1 < 1 || npart1 > MAXN) cerr << "Err: npart1 < 1 or npart1 > MAXN\n";
+    if (npart1 < 1 || npart1 > MAXN) 
+        cerr << "Err: npart1 < 1 or npart1 > MAXN\n";
     if (nparttol > MAXN) cerr << "Err: nparttol > MAXN\n";
 
     // Read separator between file head and file body
@@ -306,12 +307,13 @@ double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot,
         int start_idx, int end_idx) {
     // repeate calculate the previous element of the current first element
     // 最后一个进程只有一个粒子, 则需要依靠前一个进程的最后一个粒子计算
-    if (end_idx == param.npartM && end_idx - start_idx <= 1) {
-        // start_idx = (start_idx - 1 <= 0) ? 0 : start_idx - 1; 
-        start_idx -= 1;
-    }
+//     if (end_idx != 0 && end_idx - start_idx <= 1) {
+//         start_idx -= 1;
+//     }
 //     for (int i = start_idx; i < end_idx - 1; i++) {
-    for (int i = start_idx; i < end_idx && i < param.npartM - 1; i++) {
+//     for (int i = start_idx; i < end_idx && i < param.npartM - 1; i++) {
+    start_idx = start_idx == 0 ? 0 : start_idx - 1;
+    for (int i = start_idx; i < end_idx; i++) {
         if (i == param.npart1) break;
         int j = i + 1;
         double xij = particle_list[i].x - particle_list[j].x;
@@ -323,8 +325,7 @@ double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot,
 
         double e_bond = param.ck_r * pow(rij - param.rbond_nat[i], 2);
         e_bond_tot += e_bond;
-        double e_bond_drv =
-            -2 * param.ck_r * (rij - param.rbond_nat[i]);
+        double e_bond_drv = -2 * param.ck_r * (rij - param.rbond_nat[i]);
         double drix = xij / rij;
         double driy = yij / rij;
         double driz = zij / rij;
@@ -1562,15 +1563,14 @@ int pf::Simulation::start_simulation(int rank, int size) {
             // fortran code: do 100 nadim_new=0,nstep
             for (int j = 0; j < param.nstep; j++) {
 //                 cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAA:";
-                if (!rank && param.nadim % 10000 == 0) cout << param.nadim << '\n';
                 param.nadim += 1;
 
                 // Unify all the state of first iteration
+//                 if (param.nadim < 10) {
                 if (param.nadim == 0) {
                     verlet(enerkin, e_pot, 0, param.npartM);
-                    MPI_Bcast(&particle_list[0], param.npartM * 
-                            sizeof(Particle), MPI_BYTE, 0, MPI_COMM_WORLD);
-                    MPI_Barrier(MPI_COMM_WORLD);
+//                     MPI_Bcast(&particle_list[0], param.npartM * 
+//                             sizeof(Particle), MPI_BYTE, 0, MPI_COMM_WORLD);
                 } else {
                     verlet(enerkin, e_pot, start_idx, end_idx);
                 }
@@ -1579,6 +1579,7 @@ int pf::Simulation::start_simulation(int rank, int size) {
                 // Exchange particles when rank != -1
                 if (rank != -1 && size > 1 && param.nadim != 0) {
                     exchange_particle(rank, size);
+                    MPI_Barrier(MPI_COMM_WORLD);
                 }
 
 //                 if(!rank)cout << "  CCCCCCCCCCCCCCCCCCCCCCCCCC\n";
