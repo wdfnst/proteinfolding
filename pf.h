@@ -185,14 +185,6 @@ public:
     // *rand*: force by Brownian Motion (布朗运动产生的随机力)
     double frandx, frandy, frandz;
     double frandxo, frandyo, frandzo;
-
-    public:
-    void display() {
-        std::cout << fxr << ' ' << fyr << ' ' << fzr << ' '
-                   << fxth << ' ' << fyth << ' ' << fzth << ' '
-                   << fxph << ' ' << fyph << ' ' << fzph << std::endl;
-    }
-
 }; // end of class Particle
 
 /* Class Force for solving force fields 

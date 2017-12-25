@@ -306,12 +306,6 @@ int pf::Force::force(vector<Particle> &particle_list, double &e_pot,
 double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot,
         int start_idx, int end_idx) {
     // repeate calculate the previous element of the current first element
-    // 最后一个进程只有一个粒子, 则需要依靠前一个进程的最后一个粒子计算
-//     if (end_idx != 0 && end_idx - start_idx <= 1) {
-//         start_idx -= 1;
-//     }
-//     for (int i = start_idx; i < end_idx - 1; i++) {
-//     for (int i = start_idx; i < end_idx && i < param.npartM - 1; i++) {
     start_idx = start_idx == 0 ? 0 : start_idx - 1;
     for (int i = start_idx; i < end_idx; i++) {
         if (i == param.npart1) break;
@@ -350,12 +344,8 @@ double pf::Force::fbond(vector<Particle> &particle_list, double &e_bond_tot,
 double pf::Force::fbend(vector<Particle> &particle_list, double &e_bend_tot,
         int start_idx, int end_idx) {
     // repeate calculate the previous two element of the current first element
-    // 最后一个进程只有两个粒子, 则需要依靠前一个进程的最后两个粒子计算
-    if (start_idx != 0 && end_idx - start_idx <= 2) {
-        // start_idx = (start_idx - 2 <= 0) ? 0 : start_idx - 2;
-        start_idx -= 2;
-    }
-//     for (int i = start_idx; i < end_idx - 2; i++) {
+    start_idx = start_idx == 0 ? 0 : start_idx - 2;
+    start_idx = start_idx < 0 ? 0 : start_idx;
     for (int i = start_idx; i < end_idx && i < param.npartM - 2; i++) {
         int j = i + 1;
         int k = i + 2;
@@ -423,12 +413,8 @@ double pf::Force::fbend(vector<Particle> &particle_list, double &e_bend_tot,
 double pf::Force::ftorsion(vector<Particle> &particle_list,
         double &e_tors_tot, int start_idx, int end_idx) {
     // repeate calculate the previous three element of the current first element
-    // 最后一个进程只有两个粒子, 则需要依靠前一个进程的最后三个粒子计算
-    if (start_idx != 0 && end_idx - start_idx <= 3) {
-        // start_idx = (start_idx - 3 <= 0) ? 0 : start_idx - 3;
-        start_idx -= 3;
-    }
-//     for (int i = start_idx; i < end_idx - 3; i++) {
+    start_idx = start_idx == 0 ? 0 : start_idx - 3;
+    start_idx = start_idx < 0 ? 0 : start_idx;
     for (int i = start_idx; i < end_idx && i < param.npartM - 3; i++) {
         int j = i + 1;
         int k = i + 2;
@@ -852,7 +838,7 @@ double pf::Force::funbond_without(vector<Particle> &particle_list,
         zij = (particle_list[i].z - particle_list[j].z);
 
         // ! cancel for Q_w
-        // !      if ( kunbond(k) == 1 .and. rij >= (2*runbond_nat(k)+3.0) .or. &
+        // !    if ( kunbond(k) == 1 .and. rij >= (2*runbond_nat(k)+3.0) .or. &
         if ((param.kunbond[k] == 2 && rij >= (2 * param.CritR_non + 3.0))
                 || (param.kunbond[k] == 0 && rij >= (1.8 * param.sigma_ij))
                 || (i > param.npartM && j > param.npartM)) continue;
@@ -1455,6 +1441,7 @@ int pf::Simulation::read_initalconform(string filename) {
  * MPI is disabled when rank = -1, else MPI is enabled and w.r.t process no.
  */
 int pf::Simulation::start_simulation(int rank, int size) {
+    // TODO: handle the case of rank > npartM
     string msg = "";
     int part_size = ceil(1.0 * param.npartM / size);
     int start_idx = part_size * rank;
@@ -1462,7 +1449,6 @@ int pf::Simulation::start_simulation(int rank, int size) {
     if (param.npartM - start_idx < part_size) {
         end_idx = param.npartM;
     }
-    std::cout << "npartM:" << param.npartM << ", part_size:" << end_idx - start_idx << std::endl;
     std::cout << "[" << start_idx << ", " << end_idx << ")" << std::endl;
 
     //=======================Initial work start=====================/
@@ -1547,6 +1533,23 @@ int pf::Simulation::start_simulation(int rank, int size) {
                 particle_list[kl].frandyo = particle_list[kl].frandy;
                 particle_list[kl].frandzo = particle_list[kl].frandz;
             }
+            
+            // Calculate coordinates
+            // for (int i = 0; i < param.npartM; i++) {
+            for (int i = start_idx; i < end_idx; i++) {
+                particle_list[i].x += (param.dt * particle_list[i].vx + 
+                        pow(param.dt, 2) * (particle_list[i].fxo + 
+                            particle_list[i].frandxo - 
+                            param.gm * particle_list[i].vx) / 2.0);
+                particle_list[i].y += (param.dt * particle_list[i].vy + 
+                        pow(param.dt, 2) * (particle_list[i].fyo + 
+                            particle_list[i].frandyo - 
+                            param.gm * particle_list[i].vy) / 2.0);
+                particle_list[i].z += (param.dt * particle_list[i].vz + 
+                        pow(param.dt, 2) * (particle_list[i].fzo + 
+                            particle_list[i].frandzo - 
+                            param.gm * particle_list[i].vz) / 2.0);
+            }
 
             // Copy from fortran code, TL: means?
             nOutputCount = 0;
@@ -1562,19 +1565,9 @@ int pf::Simulation::start_simulation(int rank, int size) {
             // ! main dynamics cycle
             // fortran code: do 100 nadim_new=0,nstep
             for (int j = 0; j < param.nstep; j++) {
-//                 cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAA:";
                 param.nadim += 1;
 
-                // Unify all the state of first iteration
-//                 if (param.nadim < 10) {
-                if (param.nadim == 0) {
-                    verlet(enerkin, e_pot, 0, param.npartM);
-//                     MPI_Bcast(&particle_list[0], param.npartM * 
-//                             sizeof(Particle), MPI_BYTE, 0, MPI_COMM_WORLD);
-                } else {
-                    verlet(enerkin, e_pot, start_idx, end_idx);
-                }
-//                 cout << " BBBBBBBBBBBBBBBBBBBBBBBBBBBBB:" << rank << endl;
+                verlet(enerkin, e_pot, start_idx, end_idx);
 
                 // Exchange particles when rank != -1
                 if (rank != -1 && size > 1 && param.nadim != 0) {
@@ -1582,7 +1575,6 @@ int pf::Simulation::start_simulation(int rank, int size) {
                     MPI_Barrier(MPI_COMM_WORLD);
                 }
 
-//                 if(!rank)cout << "  CCCCCCCCCCCCCCCCCCCCCCCCCC\n";
                 // !-------------save data for purpose of restore-------------
                 // if(mod(nadim,nsnap).eq.0.and.vx(1).ge.-1e6.and.vx(1).le.1e6)
                 // because particle_list's index startswith 0, so v(1)-->[0]
@@ -1598,8 +1590,6 @@ int pf::Simulation::start_simulation(int rank, int size) {
                     nadim_old = param.nadim;
                     nOutGap_old = nOutputGap;
                 }
-
-//                 if(!rank)cout << "   DDDDDDDDDDDDDDDDDDDDDDDDDD\n";
 
                 // ! restore, TL: why restore?
                 if (!(particle_list[0].vx >= -1e6
@@ -1641,15 +1631,8 @@ int pf::Simulation::start_simulation(int rank, int size) {
                         || (param.gQ_f1 >= param.gQf1nativ
                             && param.gQ_f2 >= param.gQf2nativ
                             && param.gQ_b >= param.gQbnativ)) {
-                    if (!rank) {
-                    cout << param.gQ_f1 << ' ' << param.gQf1denatural << ' ' 
-                        << param.gQ_f2 << ' ' << param.gQf2denatural << ' ' 
-                        << param.gQ_b << ' ' << param.gQbdenatural << endl;
-                    cout << "bbbbbbbbbbbbbbbbbbbbbbbbb:" << param.nadim << endl;
-                    }
                     break;
                 }
-//                 if(!rank)cout << "    EEEEEEEEEEEEEEEEEEEEEEEE\n";
             } // fortran code: 100 continue
 
             // Accumulate the number of folding (动力学模拟情况下: 折叠计数)
@@ -1720,37 +1703,9 @@ int pf::Simulation::exchange_particle(int rank, int size) {
         if (i == size - 1)
             rcounts[i] = last_send_size * sizeof(Particle);
     }
-    ////////////////////////////////////////////////////
-//     cout << "rank:" << rank << endl;
-//     for (int i = 0; i < size; ++i) {
-//         cout << rcounts[i] << ' ';
-//     }
-//     cout << endl;
-//     for (int i = 0; i < size; ++i) {
-//         cout << rdispls[i] << ' ';
-//     }
-//     cout << endl;
-    ////////////////////////////////////////////////////
-//     if (rank == 1) {
-//         cout << "before:";
-//         particle_list[0].display();
-//         particle_list[1].display();
-//         particle_list[2].display();
-//         particle_list[3].display();
-//         particle_list[4].display();
-//     }
     MPI_Allgatherv(&particle_list[rank * part_size], 
             send_size * sizeof(Particle), MPI_BYTE, &particle_list[0], 
             &rcounts[0], &rdispls[0], MPI_BYTE, MPI_COMM_WORLD);
-//     if (rank == 1) {
-//         cout << "=====================================" << endl;
-//         cout << "after:";
-//         particle_list[0].display();
-//         particle_list[1].display();
-//         particle_list[2].display();
-//         particle_list[3].display();
-//         particle_list[4].display();
-//     }
 
     return 0;
 }
@@ -1774,19 +1729,6 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot, int start_idx,
     enerkin = 0.0;
     RANTERM();
 
-    // Calculate coordinates
-    // for (int i = 0; i < param.npartM; i++) {
-    for (int i = start_idx; i < end_idx; i++) {
-        particle_list[i].x += (param.dt * particle_list[i].vx + pow(param.dt, 2)
-                * (particle_list[i].fxo + particle_list[i].frandxo -
-                    param.gm * particle_list[i].vx) / 2.0);
-        particle_list[i].y += (param.dt * particle_list[i].vy + pow(param.dt, 2)
-                * (particle_list[i].fyo + particle_list[i].frandyo -
-                    param.gm * particle_list[i].vy) / 2.0);
-        particle_list[i].z += (param.dt * particle_list[i].vz + pow(param.dt, 2)
-                * (particle_list[i].fzo + particle_list[i].frandzo -
-                    param.gm * particle_list[i].vz) / 2.0);
-    }
     e_pot = 0.0;
     double e_bond_tot   = 0.0;
     double e_bend_tot   = 0.0;
@@ -1820,6 +1762,20 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot, int start_idx,
         particle_list[i].frandxo = particle_list[i].frandx;
         particle_list[i].frandyo = particle_list[i].frandy;
         particle_list[i].frandzo = particle_list[i].frandz;
+    }
+    
+    // Calculate coordinates
+    // for (int i = 0; i < param.npartM; i++) {
+    for (int i = start_idx; i < end_idx; i++) {
+        particle_list[i].x += (param.dt * particle_list[i].vx + pow(param.dt, 2)
+                * (particle_list[i].fxo + particle_list[i].frandxo -
+                    param.gm * particle_list[i].vx) / 2.0);
+        particle_list[i].y += (param.dt * particle_list[i].vy + pow(param.dt, 2)
+                * (particle_list[i].fyo + particle_list[i].frandyo -
+                    param.gm * particle_list[i].vy) / 2.0);
+        particle_list[i].z += (param.dt * particle_list[i].vz + pow(param.dt, 2)
+                * (particle_list[i].fzo + particle_list[i].frandzo -
+                    param.gm * particle_list[i].vz) / 2.0);
     }
 
     // Calculate kinetic energy
@@ -1893,8 +1849,6 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot, int start_idx,
     // Write out the intermediate results
     string msg = "";
     if (param.nadim == 0) {
-//         cout << "param.nadim, start_dix:" << param.nadim << ", " << start_idx 
-//             << endl;
         msg = log.format("%13s %10s %10s %10s %10s %10s %10s %10s %10s %10s "
                  "%10s %10s\n", "nadim", "gQ_f", "gQ_b", "gQ_w", "E_k", "E_pot",
                     "E_b", "E_unbond", "E_bind", "eGr", "R", "Time");
@@ -1902,29 +1856,6 @@ int pf::Simulation::verlet(double &enerkin, double &e_pot, int start_idx,
         // Output info to console, only the first process do 
         if (start_idx == 0) cout << msg;
     }
-
-    ///////////////////////////////////////////////////////
-    if (param.gQ_f1 <= param.gQf1denatural
-        && param.gQ_f2 <= param.gQf2denatural
-        && param.gQ_b <= param.gQbdenatural) {
-        msg = log.format("%13s %10s %10s %10s %10s %10s %10s %10s %10s %10s "
-                 "%10s %10s\n", "nadim", "gQ_f", "gQ_b", "gQ_w", "E_k", "E_pot",
-                    "E_b", "E_unbond", "E_bind", "eGr", "R", "Time");
-        log.info(output_filenames[9], msg);
-        // Output info to console, only the first process do 
-        if (start_idx == 0) cout << msg;
-
-        msg = log.format("%13d %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f"
-                " %10.3f %10.3f %10.3f %10f\n", param.nadim, param.gQ_f,
-                param.gQ_b, param.gQ_w, enerkin, e_pot, e_bond_tot,
-                e_unbond_tot, e_bind_tot, param.eGr, param.R,
-                MPI_Wtime() - start_time);
-        log.info(output_filenames[9], msg);
-        start_time = MPI_Wtime();
-        // Output info to console, only the first process do
-        if (start_idx == 0) cout << msg;
-    }
-    ///////////////////////////////////////////////////////
 
     if (param.nadim % param.nsnap == 0) {
         msg = log.format("%13d %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f %10.3f"
@@ -2368,7 +2299,7 @@ double pf::Simulation::rannyu() {
     // l2 = fmod(i2, itwo12);
     // l1 = fmod((i1 + i2 / itwo12), itwo12);
     // double rannyu = ooto12 * (float(l1) +
-    //         ooto12 * (float(l2) + ooto12 * (float(l3) + ooto12 * (float(l4)))));
+    //      ooto12 * (float(l2) + ooto12 * (float(l3) + ooto12 * (float(l4)))));
     int i1 = l[0] * m[3] + l[1] * m[2] + l[2] * m[1] + l[3] * m[0];
     int i2 = l[1] * m[3] + l[2] * m[2] + l[3] * m[1];
     int i3 = l[2] * m[3] + l[3] * m[2];
@@ -2379,8 +2310,8 @@ double pf::Simulation::rannyu() {
     i2 = i2 + i3 / itwo12;
     l[1] = i2 % itwo12;
     l[0] = (i1 + i2 / itwo12) % itwo12;
-    double rannyu = ooto12 * (float(l[0]) +
-            ooto12 * (float(l[1]) + ooto12 * (float(l[2]) + ooto12 * (float(l[3])))));
+    double rannyu = ooto12 * (float(l[0]) + ooto12 * (float(l[1]) + 
+                ooto12 * (float(l[2]) + ooto12 * (float(l[3])))));
     return  rannyu;
 }
 
