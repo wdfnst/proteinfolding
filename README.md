@@ -2,20 +2,19 @@
 本程序用于模拟蛋白质模拟过程, 祝使用愉快.
 ![Image of Protein _Folding](https://cen.acs.org/content/dam/cen/90/29/09029-scicon-thirumalai.jpg)
 
-### 编译及运行
+### C++版本编译及运行
 `make && mpirun -np #proc pf`
 
-### Fortran主程序IDPmd13_2.f90, 进行动力学模拟的输入文件：
-
+### Fortran版本主程序IDPmd13_2.f90, 进行动力学模拟的输入文件：    
 1. 构象坐标文件（文件名N-PDBid.dat），包含每个氨基酸残基C-alpha原子的三维坐标； 
 2. 相互作用文件（native contact map，文件名appNCS_PDBid.dat），包含每队残基的相互作用倾向和天然结构中的距离；
 3. 参数文件（input.dat）
 
+<!--
 参数文件使用说明见word文档。
-
+--!> 
 以上输入文件用于蛋白质复合物的解离过程，每个坐标均包含两个蛋白质单体。
-附件中的五个体系大小不同，可以用于测试加速效果。
-
+附件中的五个体系大小不同，可以用于测试加速效果。 
 如果需要模拟其它体系，需要先用PDB_Contact_Map程序对原始PDB文件进行处理。
 
 ### 配置文件说明:    
@@ -58,8 +57,7 @@ appNCS-1STF.dat
       1.200       1.200         0.96             ; Alpha1, Alpha2, Beta    
       0.000       5.000                          ; Delta, CritR_non    
 ```    
-### 参数说明：    
-    
+
 1. `1STF      10-Apr-2017:`模拟的体系名与模拟日期。不影响程序的运行。   
 2. `.1STF.test:`统一的后缀名。方便整理用，本次模拟所有的输出文件均具有此后缀。    
 3. `95  307  20 1:` 
