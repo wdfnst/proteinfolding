@@ -608,9 +608,6 @@ double pf::Force::funbond_with(vector<Particle> &particle_list,
             if (rij / param.runbond_nat[k] - param.gr0 < 8 * param.gdr) {
                 tem = 1 / (1 + exp((rij / (param.runbond_nat[k] + param.ddr_sol)
                         - param.gr0) / param.gdr));
-                if (param.nadim % param.nsnap == 0 && tem < param.gQbdenatural) {
-                    cout << "tem:" << tem << endl;
-                }
                 if (i <= param.npart1 && j <= param.npart1) {
                     param.gQ_f1 += tem;
                 } else if (i <= param.npart1 && j > param.npart1) {
