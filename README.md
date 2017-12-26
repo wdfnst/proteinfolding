@@ -1,5 +1,6 @@
 # proteinfolding
 本程序用于模拟蛋白质模拟过程, 祝使用愉快.
+![Image of Protein _Folding](https://cen.acs.org/content/dam/cen/90/29/09029-scicon-thirumalai.jpg)
 
 ### 编译及运行
 `make && mpirun -np #proc pf`
