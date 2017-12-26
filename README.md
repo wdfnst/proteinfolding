@@ -1,6 +1,7 @@
 # proteinfolding
 
 主程序IDPmd13_2.f90, 进行动力学模拟的输入文件：
+
 1. 构象坐标文件（文件名N-PDBid.dat），包含每个氨基酸残基C-alpha原子的三维坐标； 
 2. 相互作用文件（native contact map，文件名appNCS_PDBid.dat），包含每队残基的相互作用倾向和天然结构中的距离；
 3. 参数文件（input.dat）
@@ -37,49 +38,65 @@ appNCS-1STF.dat
       0.0         0.0         0.0                ; ga1_f1, ga2_f1, gQ0_f1    
       0.0         0.0         0.0                ; ga1_f2, ga2_f2, gQ0_f2    
       0.0         0.0         0.0                ; ga1_b, ga2_b, gQ0_b    
-      0.0         0.0      0.0       0.02        ; ga1_w, ga2_w, gQ0_w, alpha_Qw    
+      0.0         0.0         0.0        0.02    ; ga1_w, ga2_w, gQ0_w, alpha_Qw    
       1                                          ; Is_Solvation    
       1           0           200                ; nConform, nCon0, nRunConf    
-      500 0.01  0 1000  0 1000                   ; gQbnativ, gQbdenatural, gQf1nativ, gQf1denatural, gQf2nativ, gQf2denatural    
+      500       0.01            0    1000  0 1000; gQbnativ, gQbdenatural, gQf1nativ, gQf1denatural, gQf2nativ, gQf2denatural    
      500000     50000000                         ; nsnap, nstep    
-        400      100000    500000                ; nConformOutput, nOutput0, ndOutput    
-    -2 1000  -2 1000  -2 1000                    ; outQf1_i, outQf1_f, outQf2_i, outQf2_f, outQb_i, outQb_f    
-         20     2000000                          ; nbinsnap, nbinsnap0    
-        100         100                          ; nbin_f, nbin_b    
+      400      100000    500000                  ; nConformOutput, nOutput0, ndOutput    
+     -2         1000        -2      1000  -2 1000; outQf1_i, outQf1_f, outQf2_i, outQf2_f, outQb_i, outQb_f    
+      20     2000000                             ; nbinsnap, nbinsnap0    
+      100         100                            ; nbin_f, nbin_b    
       3       1        0.000                     ; dbin_f, dbin_b, vbin0    
-          0         100         7.0   -350.0     ; IsEbin, nEbin, dEbin, vEbin0    
-          1          100         0.6   -57       ; IsEbbin, nEbbin, dEbbin, vEbbin0    
-          0          100        1.000     0.000  ; IsRbin, nRbin, dRbin, vRbin0    
-          1          100        0.5   -25  0.001 ; IsWbin, nWbin, dWbin, vWbin0, cri_Qb    
+      0         100         7.0   -350.0         ; IsEbin, nEbin, dEbin, vEbin0    
+      1          100         0.6   -57           ; IsEbbin, nEbbin, dEbbin, vEbbin0    
+      0          100        1.000     0.000      ; IsRbin, nRbin, dRbin, vRbin0    
+      1          100        0.5   -25  0.001     ; IsWbin, nWbin, dWbin, vWbin0, cri_Qb    
       7500.0      10.000                         ; PBC: pL, dl    
       1.200       1.200         0.96             ; Alpha1, Alpha2, Beta    
       0.000       5.000                          ; Delta, CritR_non    
 ```    
-参数说明：    
+### 参数说明：    
     
 > 1STF      10-Apr-2017        
+
 模拟的体系名与模拟日期。不影响程序的运行。   
 > .1STF.test   
+
 统一的后缀名。方便整理用，本次模拟所有的输出文件均具有此后缀。    
 > 95  307  20 1    
+
 1. 前两个参数分别是第一条链的长度和总长度，若模拟单条链则两个值相等。    
 2. 第三个参数是相互作用文件中用于区分两条链的间隔值。因为相互作用文件中只有残基编号而没有链编号，所以对残基进行了重新编号，并且让两条链的编号中间存在一定的间隔，以便在程序中能够通过读入残基编号来判断其属于哪一条链。以该体系为例，编号1-95的残基为A链，编号116以后为B链。建议不修改此参数。    
 3. 模拟模式。该版本的程序有0和1两个赋值，模式0为单链模拟，1为双链模拟。    
+
 > N-1STF.dat    
+
 天然构象的坐标文件。    
+
 > N-1STF.dat    
+
 初始构象的坐标文件。本输入文件用于模拟蛋白质复合物解离的动力学过程，所以初始构象与天然构象相同。模拟开始时的初始构象根据需要而定，不一定与天然构象一致。    
+
 > appNCS-1STF.dat    
 相互作用文件。    
 
 > 1334887077757897                                  ; random numer, 16 characters    
+
 随机数种子。    
+
 > 1.000       1.000       1.000      1.000    ; epsil, epsil1, epsil2, enscale    
+
 控制力场中模拟强度的参数epsilon。    
+
 > 100.000      20.000       1.000      0.500    ; ck_r, ck_tht, ck_phi1, ck_phi3    
+
 力场中的力常数。分别为键能项（r）、键角项（theta）和二面角项（phi）。    
+
 > 4.000       1.000       1.200               ; sigma_ij, amass, gamma    
+
 用于朗之万动力学模拟的参数。该模型的动力学过程需要考虑溶液中的布朗运动，因此采用朗之万动力学。    
+
 > 1.000       1.000                           ; avsn0, boltz    
 阿伏伽德罗常数与玻尔兹曼常数。该模型中定义为1。    
 参考文献：http://doi.org/10.1016/S0022-2836(02)01434-1    
